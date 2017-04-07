@@ -43,6 +43,8 @@ executable pidgeonclub
                      , wai-middleware-static
   other-modules:       PidgeonClub.Core
                      , PidgeonClub.Views
+                     , PidgeonClub.Types
+                     , PidgeonClub.Actions
   default-language:    Haskell2010
 
 
