@@ -1,16 +1,27 @@
 The source code for pidgeon.club.
 
+siteconfig.cfg
+--------------
+Set user to the user under which pidgeonclub will be executed
+and a database password for the user in `siteconfig.cfg`.
+
+
 Postgresql stuff
 ----------------
 
-Create a user with the same name under which `pidgeonclub` will be executed with:
+Create a role with the same name under which `pidgeonclub` will be executed with:
 ```bash
 createuser --interactive
 createdb myDatabasename
 ```
+Then connect to the database:
+```bash
+psql -d myDatabasename
+```
+and set a password with postgres command `\password`.
 
-Then add database authentication info to `siteconfig.cfg`.
-
+Compile pidgeonclub
+-------------------
 To compile and execute:
 
 ```bash
