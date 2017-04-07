@@ -4,14 +4,18 @@ Postgresql stuff
 ----------------
 
 Create a user with the same name under which `pidgeonclub` will be executed with:
-`createuser --interactive`
-`createdb myDatabasename`
+```bash
+createuser --interactive
+createdb myDatabasename
+```
 
 Then add database authentication info to `siteconfig.cfg`.
 
-Run
+To compile and execute:
 
-`stack build`
-`stack exec pidgeonclub`
+```bash
+stack build
+stack exec pidgeonclub
+```
 
 
