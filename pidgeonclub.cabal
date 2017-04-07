@@ -41,9 +41,7 @@ executable pidgeonclub
                      , unix-time
                      , wai
                      , wai-middleware-static
-  other-modules:       PidgeonClub.Actions
-                     , PidgeonClub.Core
-                     , PidgeonClub.Types
+  other-modules:       PidgeonClub.Core
                      , PidgeonClub.Views
   default-language:    Haskell2010
 
