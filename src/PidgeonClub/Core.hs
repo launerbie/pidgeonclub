@@ -12,8 +12,6 @@ import Web.Spock
 import Web.Spock.Action
 
 --------------------- PidgeonClub ----------------------
---import PidgeonClub.Actions
---import PidgeonClub.Types
 import PidgeonClub.Views
 
 data PidgeonConfig = PidgeonConfig

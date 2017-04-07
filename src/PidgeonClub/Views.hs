@@ -7,8 +7,6 @@ import qualified Data.Text as T
 import Lucid
 import Lucid.Base (makeAttribute)
 
-import PidgeonClub.Types
-
 data Page = Home
           | About
           | AllUsers
