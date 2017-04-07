@@ -24,10 +24,15 @@ executable pidgeonclub
                      , http-types
                      , hvect
                      , lucid
+                     , monad-logger
                      , mtl
                      , network
                      , persistent
+                     , persistent-postgresql
+                     , persistent-sqlite
+                     , persistent-template
                      , path-pieces
+                     , resourcet
                      , Spock
                      , Spock-core
                      , transformers
@@ -36,7 +41,14 @@ executable pidgeonclub
                      , unix-time
                      , wai
                      , wai-middleware-static
+  other-modules:       PidgeonClub.Actions
+                     , PidgeonClub.Core
+                     , PidgeonClub.Types
+                     , PidgeonClub.Views
   default-language:    Haskell2010
+
+
+
 
 
 source-repository head
