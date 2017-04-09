@@ -21,6 +21,7 @@ executable pidgeonclub
                      , aeson
                      , bytestring
                      , configurator
+                     , cryptohash
                      , http-types
                      , hvect
                      , lucid

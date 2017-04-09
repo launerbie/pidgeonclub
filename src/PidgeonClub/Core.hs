@@ -1,20 +1,51 @@
 {-# LANGUAGE OverloadedStrings #-}
+
+{-# LANGUAGE EmptyDataDecls             #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE GADTs                      #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE QuasiQuotes                #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TypeFamilies               #-}
+
 module PidgeonClub.Core where
 
 import Control.Monad.Trans
 import Control.Monad.Trans.Maybe
 import Control.Monad
 import Database.Persist.Sql
+import Database.Persist.TH
+import Data.Time (UTCTime, getCurrentTime, addUTCTime)
+
 import qualified Data.Text as T
 import Network.Socket (HostName)
 import Lucid
-import Web.Spock
+import Web.Spock hiding (SessionId)
 import Web.Spock.Action
 
 --------------------- PidgeonClub ----------------------
 import PidgeonClub.Actions
 import PidgeonClub.Types
 import PidgeonClub.Views
+
+share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
+  Sessie
+    validUntil UTCTime
+    personId PersonId
+    deriving Eq Show
+  Person
+    email String
+    password String
+    UniqueUsername email
+    deriving Eq Show
+  Geodata
+    latitude Int
+    longitude Int
+    zipcode String Maybe
+    personId PersonId
+    deriving Eq Show
+|]
 
 data PidgeonConfig = PidgeonConfig
     { dbHost :: HostName
@@ -25,7 +56,7 @@ data PidgeonConfig = PidgeonConfig
     } deriving (Show)
 
 data AppState = AppState {getCfg :: PidgeonConfig}
-data AppSession = AppSession String
+type AppSession = Maybe SessieId
 type PidgeonApp ctx a = SpockCtxM ctx SqlBackend AppSession AppState a
 type PidgeonAction = SpockActionCtx () SqlBackend AppSession AppState
 

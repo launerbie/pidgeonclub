@@ -16,12 +16,14 @@ import Control.Monad.Trans  (lift, MonadIO, liftIO)
 import Control.Monad.Trans.Resource  (ResourceT, runResourceT)
 import Control.Monad.Logger    (runNoLoggingT, runStderrLoggingT, NoLoggingT)
 
+import qualified Crypto.Hash.SHA512 as SHA
+
 import qualified Data.ByteString.Char8 as B
 import qualified Data.Configurator as C
 import Data.Monoid ((<>))
 import qualified Data.Text as T
 --import Data.UnixTime (getUnixTime, toClockTime, utSeconds)
-import Data.Time (UTCTime)
+import Data.Time (UTCTime, getCurrentTime, addUTCTime)
 import qualified Database.Persist as P
 import Database.Persist.Postgresql ( ConnectionString, createPostgresqlPool
                                    , SqlPersistT)
@@ -46,27 +48,12 @@ import PidgeonClub.Views
 --import PidgeonClub.Actions
 import PidgeonClub.Core
 
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
-  Session
-    validUntil UTCTime
-    personId PersonId
-  Person
-    email String
-    password String
-    zipcode String Maybe
-    UniqueUsername email
-    deriving Eq Show
-  BlogPost
-    title String
-    authorId PersonId
-    deriving Eq Show
-|]
-
 main :: IO ()
 main = do
   sitecfg <- parseConfig "siteconfig.cfg" --TODO: default to 'siteconfig.cfg',
   pool <- dbpool sitecfg
-  cfg <- defaultSpockCfg (AppSession "SessionName") pool (AppState sitecfg)
+  -- defaultSpockCfg :: sess -> PoolOrConn conn -> st -> IO (SpockCfg conn sess st)
+  cfg <- defaultSpockCfg (Nothing) pool (AppState sitecfg)
   runSpock 8080 (spock cfg app)
 
 dbpool :: PidgeonConfig -> IO (PoolOrConn SqlBackend)
@@ -99,7 +86,9 @@ app =  do
 
     get "/" $ do
         sid <- getSessionId
+        r <- readSession
         liftIO $ print sid
+        liftIO $ print r
         (lucid $ homePage)
 
     get "/contact" $ do
@@ -108,17 +97,18 @@ app =  do
     post "/contact" $ do
         showRequest
 
-    get "/register" $ do
-        text("registration \nform")
+    get "/signup" $ do
+        lucid (signupPage Nothing)
 
-    post "/register" $ do
+    post "/signup" $ do
         email <- param "email"
         password <- param "password"
         case email of
           Just e -> case password of
-            Just p -> do runDB $ insert $ Person e p Nothing
-                         liftIO $ print ("Added: "++e)
-                         text("succes!")
+            Just p -> do
+               runDB $ insert $ Person e p
+               liftIO $ print ("Added: "++e)
+               text("succes!")
             Nothing -> text("oops, password param missing from form")
           Nothing -> text("oops, email param missing from form")
 
@@ -128,7 +118,42 @@ app =  do
         lucid $ allUsersPage (map (\u -> let e = entityVal u
                                          in (personEmail e, personPassword e)) users)
 
-    get ("/profile" <//> var) $ \person -> (lucid $ profilePage person)
+    get ("/user" <//> var) $ \user -> (lucid $ profilePage user)
+
+    get "/profile" $ do
+        r <- readSession
+        liftIO $ print r
+        --mSid <- runDB $ get sid
+        --liftIO $ print mSid
+        text(T.pack $ show r)
+
+    get "/login" $ lucid loginPage
+
+    post "/login" $ do
+        showRequest
+        email <- param "email"
+        password <- param "password"
+        case email of
+          Just e -> case password of
+            Just p -> do
+               mPerson <- runDB $ getBy (UniqueUsername e)
+               mPass <- runDB $ getBy (UniqueUsername p)
+               -- for now, don't check password
+               -- just check if user exists
+               case mPerson of
+                   Just personEntity -> do
+                       liftIO $ print personEntity
+                       now <- liftIO getCurrentTime
+                       let validTil = addUTCTime 3600 now
+                       let person = entityKey personEntity
+                       sid <- runDB $ insert (Sessie validTil person)
+                       liftIO $ print sid
+                       writeSession (Just sid)
+                       text("Login succesful.")
+                   Nothing -> text("Invalid email or password")
+            Nothing -> text("oops, password param missing from form")
+          Nothing -> text("oops, email param missing from form")
+        redirect "/"
 
 ---------------------- Lucid stuff -----------------------
 lucid :: MonadIO m => Html a1 -> ActionCtxT ctx m a

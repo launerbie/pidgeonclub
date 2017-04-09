@@ -82,7 +82,11 @@ contactPage = basePage Contact $ do
      p_ "contact page"
 
 profilePage :: String -> Html ()
-profilePage person = basePage Profile (helloUser person)
+profilePage email = basePage Profile $ do
+  div_ [class_ "container"] $ do
+     p_ $ toHtml email
+
+
 
 -- ### Additional Attributes
 -- border: A table attribute
@@ -109,8 +113,6 @@ makeRow (a,b) = tr_ $ do
                   td_ (toHtml a)
                   td_ (toHtml b)
 
-helloUser :: String -> Html ()
-helloUser user = div_ [class_ "container"] (p_ (toHtml $"This shall be the "++user++"'s profile page."))
 
 hetprobleem = "Na een drukke dag komt u 's avonds thuis, er ligt een briefje op de mat.\n\"Helaas hebben wij u vandaag niet thuis aangetroffen, wij proberen het morgen nogmaals.....\"\nHet pakketje, dat u gisteren via uw favoriete webshop heeft besteld, wordt morgen bezorgd. Maar ook morgen moet u werken en zal de postbode u weer niet thuis aantreffen.....\nU heeft uw pakketje echt nodig, erg onhandig en niet klantvriendelijk!!\n2 De lamp die jullie op het oog hebben, kan alleen via internet besteld worden.\nHelaas zijn jullie deze week alle twee overdag niet thuis.....\nWaar en wanneer moet u uw lamp nu laten bezorgen?\n3 De nieuwe schoenen, die u online heeft besteld, passen niet, u kunt ze kosteloos retourneren. Maar waar vind u de tijd om naar het postkantoor te gaan?\nDit zijn enkele voorbeelden die iedereen herkent. U heeft iets via internet besteld maar u moet zich aanpassen aan de levertijden van de bezorger."
 
@@ -124,25 +126,25 @@ signupForm mErr = do
   div_ [class_ "container"] $ do
      form_ [class_ "form-horizontal", method_ "post", action_ "/signup"] $ do
          div_ [class_ "form-group"] $ do
-            label_ [for_ "inputUsername", class_ "col-sm-2 control-label"] "Username: "
+            label_ [for_ "email", class_ "col-sm-2 control-label"] "email: "
             div_ [class_ "col-sm-4"] $ do
-               input_ [type_ "username", class_ "form-control", name_ "inputUsername", placeholder_ "Username"]
+               input_ [type_ "email", class_ "form-control", name_ "email", placeholder_ "pieterpost@mail.com"]
                {- formErrors -}
                case mErr of
                    Just e -> alert $ usernameError e
                    Nothing -> mempty
          div_ [class_ "form-group"] $ do
-            label_ [for_ "inputPassword", class_ "col-sm-2 control-label"] "Password: "
+            label_ [for_ "password", class_ "col-sm-2 control-label"] "password: "
             div_ [class_ "col-sm-4"]$ do
-               input_ [type_ "password",  class_ "form-control", name_ "inputPassword", placeholder_ "Password"]
+               input_ [type_ "password",  class_ "form-control", name_ "password", placeholder_ "supersecret123"]
                {- formErrors -}
                case mErr of
                    Just e -> alert $ passwordError e
                    Nothing -> mempty
          div_ [class_ "form-group"] $ do
-            label_ [for_ "inputPasswordConfirm", class_ "col-sm-2 control-label"] "Confirm Password: "
+            label_ [for_ "passwordConfirm", class_ "col-sm-2 control-label"] "confirm password: "
             div_ [class_ "col-sm-4"]$ do
-               input_ [type_ "password",  class_ "form-control", name_ "inputPasswordConfirm", placeholder_ "Password"]
+               input_ [type_ "password",  class_ "form-control", name_ "passwordConfirm", placeholder_ "supersecret123"]
                {- formErrors -}
                case mErr of
                    Just e -> alert $ passwordErrorConfirm e
@@ -156,13 +158,13 @@ suchHorizontalLoginForm = do
   div_ [class_ "container"] $ do
      form_ [class_ "form-horizontal", method_ "post", action_ "/login"] $ do
          div_ [class_ "form-group"] $ do
-            label_ [for_ "inputUsername", class_ "col-sm-2 control-label"] "Username: "
+            label_ [for_ "inputEmail", class_ "col-sm-2 control-label"] "email: "
             div_ [class_ "col-sm-4"]$ do
-               input_ [type_ "username", class_ "form-control", name_ "inputUsername", placeholder_ "Username"]
+               input_ [type_ "email", class_ "form-control", name_ "email", placeholder_ ""]
          div_ [class_ "form-group"] $ do
-            label_ [for_ "inputPassword", class_ "col-sm-2 control-label"] "Password: "
+            label_ [for_ "password", class_ "col-sm-2 control-label"] "password: "
             div_ [class_ "col-sm-4"]$ do
-               input_ [type_ "password",  class_ "form-control", name_ "inputPassword", placeholder_ "Password"]
+               input_ [type_ "password",  class_ "form-control", name_ "password", placeholder_ ""]
          div_ [class_ "form-group"] $ do
             div_ [class_ "col-sm-offset-2 col-sm-4"] $ do
                button_ [type_ "submit", class_ "btn btn-default"] "Sign in"
