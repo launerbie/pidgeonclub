@@ -28,6 +28,7 @@ import qualified Database.Persist as P
 import Database.Persist.Postgresql ( ConnectionString, createPostgresqlPool
                                    , SqlPersistT)
 import Database.Persist.Sql hiding (get)
+import qualified Database.Persist.Sql as PSQL
 import Database.Persist.TH
 import Lucid
 import Network.Wai.Middleware.Static (staticPolicy, addBase)
@@ -121,11 +122,23 @@ app =  do
     get ("/user" <//> var) $ \user -> (lucid $ profilePage user)
 
     get "/profile" $ do
-        r <- readSession
-        liftIO $ print r
-        --mSid <- runDB $ get sid
-        --liftIO $ print mSid
-        text(T.pack $ show r)
+        mSession <- readSession
+        liftIO $ print mSession
+        case mSession of
+            Just sid -> do
+                mSid <- runDB $ PSQL.get sid
+                liftIO $ print mSid
+                case mSid of
+                    Just sess -> do
+                        mPerson <- runDB $ PSQL.get (sessiePersonId sess)
+                        liftIO $ print mPerson
+                        case mPerson of
+                            Just p -> text(T.pack $ show $ personEmail p)
+                            Nothing -> text("user doesn't exist anymore")
+                        text("person exists")
+                    Nothing -> text("Invalid session")
+                text("cool")
+            Nothing -> text("Please login first.")
 
     get "/login" $ lucid loginPage
 
