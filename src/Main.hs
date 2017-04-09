@@ -130,12 +130,6 @@ app =  do
 
     get ("/profile" <//> var) $ \person -> (lucid $ profilePage person)
 
-    get ("/room" <//> var) $ \r -> do
-        text ("Welcome to room " <> (T.pack r))
-
-    post ("/room" <//> var) $ \(r :: T.Text) -> do
-        text (T.pack $ "room")
-
 ---------------------- Lucid stuff -----------------------
 lucid :: MonadIO m => Html a1 -> ActionCtxT ctx m a
 lucid = lazyBytes . renderBS
