@@ -100,17 +100,17 @@ cellspacing_ = makeAttribute "cellspacing"
 cellpadding_ :: T.Text -> Attribute
 cellpadding_ = makeAttribute "cellpadding_"
 
-allUsersPage :: [(String, String, String)] -> Html ()
+allUsersPage :: [(T.Text, T.Text, T.Text)] -> Html ()
 allUsersPage xs = basePage AllUsers $ do
   div_ [class_ "container"] $ do
      table_ [class_ "table table-bordered"] $ do
           tr_ $ do
             th_ "Email"
-            th_ "Hash"
+            th_ "Salted SHA256"
             th_ "Salt"
           mapM_ makeRow3 xs
 
-makeRow3 :: (String, String, String) -> Html ()
+makeRow3 :: (T.Text, T.Text, T.Text) -> Html ()
 makeRow3 (a,b,c) = tr_ $ do
                   td_ (toHtml a)
                   td_ (toHtml b)

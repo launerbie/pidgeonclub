@@ -16,7 +16,8 @@ import Control.Monad.Trans  (lift, MonadIO, liftIO)
 import Control.Monad.Trans.Resource  (ResourceT, runResourceT)
 import Control.Monad.Logger    (runNoLoggingT, runStderrLoggingT, NoLoggingT)
 
-import Data.Word8
+import Data.Char (toLower)
+import Data.Word8 hiding (toLower)
 import qualified Data.ByteString as BS
 import qualified Crypto.Hash.SHA256 as SHA
 import System.Random
@@ -115,15 +116,16 @@ app =  do
         case email of
           Just e -> case password of
             Just p1 -> case passwordConf of
-                Just p2 -> 
+                Just p2 ->
                    if p1 == p2 then do
                        g <- liftIO $ newStdGen
                        let salt = randomBS 16 g
                            hash = hashPassword p1 salt
-                       runDB $ insert $ Person e (T.unpack $ makeHex hash) (T.unpack $ makeHex salt)
-                       liftIO $ print ("Added: "++e)
+                           mail = T.toLower e
+                       runDB $ insert $ Person mail (makeHex hash) (makeHex salt)
+                       liftIO $ print ("Added: "++ T.unpack e)
                        text("succes!")
-                   else do 
+                   else do
                        text("passwords don't match!")
                 Nothing -> text("oops, passwordConfirm param missing from form")
             Nothing -> text("oops, password param missing from form")
@@ -134,12 +136,12 @@ app =  do
         users <- runDB $ selectList [] [Asc PersonEmail] -- [Entity record]
         liftIO $ print $ map entityVal users
         lucid $ allUsersPage (map (\u -> let e = entityVal u
-                                         in (personEmail e, personHash e,personSalt e )) users)
+                                         in (personEmail e, personPassword e,personSalt e )) users)
 
-    -- The user's public page 
+    -- The user's public page
     get ("/user" <//> var) $ \user -> (lucid $ profilePage user)
 
-    -- The user's settings page 
+    -- The user's settings page
     get "/profile" $ do
         mSession <- readSession
         liftIO $ print mSession
@@ -149,7 +151,7 @@ app =  do
                 liftIO $ print mSid
                 case mSid of
                     Just sess -> do
-                        -- TODO: check if sess is not expired 
+                        -- TODO: check if sess is not expired
                         mPerson <- runDB $ PSQL.get (sessiePersonId sess)
                         liftIO $ print mPerson
                         case mPerson of
@@ -169,19 +171,25 @@ app =  do
         case email of
           Just e -> case password of
             Just p -> do
-               mPerson <- runDB $ getBy (UniqueUsername e)
+               mPerson <- runDB $ getBy (UniqueUsername $ T.toLower e)
                mPass <- runDB $ getBy (UniqueUsername p)
-               -- TODO: check if password matches
                case mPerson of
                    Just personEntity -> do
                        liftIO $ print personEntity
                        now <- liftIO getCurrentTime
+
                        let validTil = addUTCTime 3600 now
-                       let person = entityKey personEntity
-                       sid <- runDB $ insert (Sessie validTil person)
-                       liftIO $ print sid
-                       writeSession (Just sid)
-                       text("Login succesful.")
+                           person = entityKey personEntity
+                           salt = personSalt $ entityVal personEntity
+                           hash = personPassword $ entityVal personEntity
+
+                       if hash == (makeHex $ hashPassword p (decodeHex $ salt))
+                       then do sid <- runDB $ insert (Sessie validTil person)
+                               liftIO $ print sid
+                               liftIO $ print salt
+                               writeSession (Just sid)
+                               text("Login succesful.")
+                       else text("Invalid email or password")
                    Nothing -> text("Invalid email or password")
             Nothing -> text("oops, password param missing from form")
           Nothing -> text("oops, email param missing from form")
