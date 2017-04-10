@@ -104,6 +104,8 @@ app =  do
     post "/signup" $ do
         email <- param "email"
         password <- param "password"
+        -- TODO: Check if passwords match
+        -- TODO: Store hashed passwords 
         case email of
           Just e -> case password of
             Just p -> do
@@ -113,14 +115,17 @@ app =  do
             Nothing -> text("oops, password param missing from form")
           Nothing -> text("oops, email param missing from form")
 
+    -- TODO: Make accessible only for admins
     get "/allusers" $ do
         users <- runDB $ selectList [] [Asc PersonEmail] -- [Entity record]
         liftIO $ print $ map entityVal users
         lucid $ allUsersPage (map (\u -> let e = entityVal u
                                          in (personEmail e, personPassword e)) users)
 
+    -- The user's public page 
     get ("/user" <//> var) $ \user -> (lucid $ profilePage user)
 
+    -- The user's settings page 
     get "/profile" $ do
         mSession <- readSession
         liftIO $ print mSession
@@ -130,6 +135,7 @@ app =  do
                 liftIO $ print mSid
                 case mSid of
                     Just sess -> do
+                        -- TODO: check if sess is not expired 
                         mPerson <- runDB $ PSQL.get (sessiePersonId sess)
                         liftIO $ print mPerson
                         case mPerson of
@@ -151,7 +157,7 @@ app =  do
             Just p -> do
                mPerson <- runDB $ getBy (UniqueUsername e)
                mPass <- runDB $ getBy (UniqueUsername p)
-               -- for now, don't check password
+               -- TODO: check if password matches
                -- just check if user exists
                case mPerson of
                    Just personEntity -> do
@@ -172,6 +178,7 @@ app =  do
 lucid :: MonadIO m => Html a1 -> ActionCtxT ctx m a
 lucid = lazyBytes . renderBS
 
+---------------------- Persistent ------------------------
 runDB :: (HasSpock m, SpockConn m ~ SqlBackend) =>
          SqlPersistT (NoLoggingT (ResourceT IO)) a -> m a
 runDB action = runQuery $ \conn ->

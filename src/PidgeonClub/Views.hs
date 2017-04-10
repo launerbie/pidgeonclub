@@ -10,6 +10,8 @@ import Lucid.Base (makeAttribute)
 import PidgeonClub.Actions
 import PidgeonClub.Types
 
+-- TODO: Login dependent menu, i.e. if not logged in, don't show the profile url in nav
+
 data Page = Home
           | About
           | AllUsers
@@ -85,7 +87,6 @@ profilePage :: String -> Html ()
 profilePage email = basePage Profile $ do
   div_ [class_ "container"] $ do
      p_ $ toHtml email
-
 
 
 -- ### Additional Attributes
