@@ -117,7 +117,7 @@ app =  do
             Just p1 -> case passwordConf of
                 Just p2 -> 
                    if p1 == p2 then do
-                       g <- liftIO $ getStdGen
+                       g <- liftIO $ newStdGen
                        let salt = randomBS 16 g
                            hash = hashPassword p1 salt
                        runDB $ insert $ Person e (T.unpack $ makeHex hash) (T.unpack $ makeHex salt)
