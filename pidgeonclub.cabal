@@ -19,6 +19,7 @@ executable pidgeonclub
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , aeson
+                     , base16-bytestring
                      , bytestring
                      , configurator
                      , cryptohash
@@ -33,6 +34,7 @@ executable pidgeonclub
                      , persistent-sqlite
                      , persistent-template
                      , path-pieces
+                     , random
                      , resourcet
                      , Spock
                      , Spock-core
@@ -42,6 +44,7 @@ executable pidgeonclub
                      , unix-time
                      , wai
                      , wai-middleware-static
+                     , word8
   other-modules:       PidgeonClub.Core
                      , PidgeonClub.Views
                      , PidgeonClub.Types

@@ -100,19 +100,21 @@ cellspacing_ = makeAttribute "cellspacing"
 cellpadding_ :: T.Text -> Attribute
 cellpadding_ = makeAttribute "cellpadding_"
 
-allUsersPage :: [(String, String)] -> Html ()
+allUsersPage :: [(String, String, String)] -> Html ()
 allUsersPage xs = basePage AllUsers $ do
   div_ [class_ "container"] $ do
      table_ [class_ "table table-bordered"] $ do
           tr_ $ do
             th_ "Email"
-            th_ "Password"
-          mapM_ makeRow xs
+            th_ "Hash"
+            th_ "Salt"
+          mapM_ makeRow3 xs
 
-makeRow :: (String, String) -> Html ()
-makeRow (a,b) = tr_ $ do
+makeRow3 :: (String, String, String) -> Html ()
+makeRow3 (a,b,c) = tr_ $ do
                   td_ (toHtml a)
                   td_ (toHtml b)
+                  td_ (toHtml c)
 
 
 hetprobleem = "Na een drukke dag komt u 's avonds thuis, er ligt een briefje op de mat.\n\"Helaas hebben wij u vandaag niet thuis aangetroffen, wij proberen het morgen nogmaals.....\"\nHet pakketje, dat u gisteren via uw favoriete webshop heeft besteld, wordt morgen bezorgd. Maar ook morgen moet u werken en zal de postbode u weer niet thuis aantreffen.....\nU heeft uw pakketje echt nodig, erg onhandig en niet klantvriendelijk!!\n2 De lamp die jullie op het oog hebben, kan alleen via internet besteld worden.\nHelaas zijn jullie deze week alle twee overdag niet thuis.....\nWaar en wanneer moet u uw lamp nu laten bezorgen?\n3 De nieuwe schoenen, die u online heeft besteld, passen niet, u kunt ze kosteloos retourneren. Maar waar vind u de tijd om naar het postkantoor te gaan?\nDit zijn enkele voorbeelden die iedereen herkent. U heeft iets via internet besteld maar u moet zich aanpassen aan de levertijden van de bezorger."

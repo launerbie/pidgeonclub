@@ -36,7 +36,8 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
     deriving Eq Show
   Person
     email String
-    password String
+    hash String
+    salt String
     UniqueUsername email
     deriving Eq Show
   Geodata

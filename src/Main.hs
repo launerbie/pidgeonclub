@@ -16,12 +16,18 @@ import Control.Monad.Trans  (lift, MonadIO, liftIO)
 import Control.Monad.Trans.Resource  (ResourceT, runResourceT)
 import Control.Monad.Logger    (runNoLoggingT, runStderrLoggingT, NoLoggingT)
 
-import qualified Crypto.Hash.SHA512 as SHA
+import Data.Word8
+import qualified Data.ByteString as BS
+import qualified Crypto.Hash.SHA256 as SHA
+import System.Random
+
+import qualified Data.ByteString.Base16 as B16
 
 import qualified Data.ByteString.Char8 as B
 import qualified Data.Configurator as C
 import Data.Monoid ((<>))
 import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
 --import Data.UnixTime (getUnixTime, toClockTime, utSeconds)
 import Data.Time (UTCTime, getCurrentTime, addUTCTime)
 import qualified Database.Persist as P
@@ -104,14 +110,22 @@ app =  do
     post "/signup" $ do
         email <- param "email"
         password <- param "password"
-        -- TODO: Check if passwords match
-        -- TODO: Store hashed passwords 
+        passwordConf <- param "passwordConfirm"
+        -- TODO: Check if email isn't already in database
         case email of
           Just e -> case password of
-            Just p -> do
-               runDB $ insert $ Person e p
-               liftIO $ print ("Added: "++e)
-               text("succes!")
+            Just p1 -> case passwordConf of
+                Just p2 -> 
+                   if p1 == p2 then do
+                       g <- liftIO $ getStdGen
+                       let salt = randomBS 16 g
+                           hash = hashPassword p1 salt
+                       runDB $ insert $ Person e (T.unpack $ makeHex hash) (T.unpack $ makeHex salt)
+                       liftIO $ print ("Added: "++e)
+                       text("succes!")
+                   else do 
+                       text("passwords don't match!")
+                Nothing -> text("oops, passwordConfirm param missing from form")
             Nothing -> text("oops, password param missing from form")
           Nothing -> text("oops, email param missing from form")
 
@@ -120,7 +134,7 @@ app =  do
         users <- runDB $ selectList [] [Asc PersonEmail] -- [Entity record]
         liftIO $ print $ map entityVal users
         lucid $ allUsersPage (map (\u -> let e = entityVal u
-                                         in (personEmail e, personPassword e)) users)
+                                         in (personEmail e, personHash e,personSalt e )) users)
 
     -- The user's public page 
     get ("/user" <//> var) $ \user -> (lucid $ profilePage user)
@@ -158,7 +172,6 @@ app =  do
                mPerson <- runDB $ getBy (UniqueUsername e)
                mPass <- runDB $ getBy (UniqueUsername p)
                -- TODO: check if password matches
-               -- just check if user exists
                case mPerson of
                    Just personEntity -> do
                        liftIO $ print personEntity
@@ -183,3 +196,28 @@ runDB :: (HasSpock m, SpockConn m ~ SqlBackend) =>
          SqlPersistT (NoLoggingT (ResourceT IO)) a -> m a
 runDB action = runQuery $ \conn ->
     runResourceT $ runNoLoggingT $ runSqlConn action conn
+
+--------------- Hex / UnHex --------------------------
+makeHex :: BS.ByteString -> T.Text
+makeHex = T.decodeUtf8 . B16.encode
+{-# INLINE makeHex #-}
+
+decodeHex :: T.Text -> BS.ByteString
+decodeHex = fst . B16.decode . T.encodeUtf8
+{-# INLINE decodeHex #-}
+
+--------------------- Crypto -----------------------------
+randomBytes:: Int -> StdGen -> [Word8]
+randomBytes 0 _ = []
+randomBytes ct g =
+    let (value, nextG) = next g
+    in fromIntegral value:randomBytes (ct - 1) nextG
+
+randomBS :: Int -> StdGen -> BS.ByteString
+randomBS len g =
+    BS.pack $ randomBytes len g
+
+hashPassword :: T.Text -> BS.ByteString -> BS.ByteString
+hashPassword password salt =
+     SHA.finalize $ SHA.updates SHA.init [salt, T.encodeUtf8 $ password]
+
