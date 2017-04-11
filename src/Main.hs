@@ -110,26 +110,30 @@ app =  do
         lucid (signupPage Nothing)
 
     post "/signup" $ do
-        email <- param "email"
-        password <- param "password"
-        passwordConf <- param "passwordConfirm"
-        -- TODO: Check if email isn't already in database
-        case email of
-          Just e -> case password of
-            Just p1 -> case passwordConf of
-                Just p2 ->
-                   if p1 == p2 then do
-                       g <- liftIO $ newStdGen
-                       let salt = randomBS 16 g
-                           hash = hashPassword p1 salt
-                           mail = T.toLower e
-                       runDB $ insert $ Person mail (makeHex hash) (makeHex salt)
-                       liftIO $ print ("Added: "++ T.unpack e)
-                       text("succes!")
-                   else do
-                       text("passwords don't match!")
-                Nothing -> text("oops, passwordConfirm param missing from form")
-            Nothing -> text("oops, password param missing from form")
+        mEmail <- param "email"
+        mPassword <- param "password"
+        mPasswordConf <- param "passwordConfirm"
+        case mEmail of
+          Just email -> do
+            mPerson <- runDB $ getBy (UniqueUsername $ T.toLower email)
+            case mPerson of
+              Just person -> text("This user already exists")
+              Nothing ->
+                  case mPassword of
+                    Just p1 -> case mPasswordConf of
+                        Just p2 ->
+                           if p1 == p2 then do
+                               g <- liftIO $ newStdGen
+                               let salt = randomBS 16 g
+                                   hash = hashPassword p1 salt
+                                   mail = T.toLower email
+                               runDB $ insert $ Person mail (makeHex hash) (makeHex salt)
+                               liftIO $ print ("Added: "++ T.unpack mail)
+                               text("succes!")
+                           else do
+                               text("passwords don't match!")
+                        Nothing -> text("oops, passwordConfirm param missing from form")
+                    Nothing -> text("oops, password param missing from form")
           Nothing -> text("oops, email param missing from form")
     -- Currently this code will short circuit on the first Nothing, but
     -- actually want to check all params and return errors on all params.
