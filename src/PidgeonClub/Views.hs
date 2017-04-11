@@ -110,6 +110,7 @@ allUsersPage xs = basePage AllUsers $ do
             th_ "Salt"
           mapM_ makeRow3 xs
 
+-- Generalize to makeRow :: nrRows -> [T.Text] -> Html () ?
 makeRow3 :: (T.Text, T.Text, T.Text) -> Html ()
 makeRow3 (a,b,c) = tr_ $ do
                   td_ (toHtml a)

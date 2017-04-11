@@ -62,6 +62,7 @@ main = do
   pool <- dbpool sitecfg
   -- defaultSpockCfg :: sess -> PoolOrConn conn -> st -> IO (SpockCfg conn sess st)
   cfg <- defaultSpockCfg (Nothing) pool (AppState sitecfg)
+  -- TODO: get port from cmd argument
   runSpock 8080 (spock cfg app)
 
 dbpool :: PidgeonConfig -> IO (PoolOrConn SqlBackend)
@@ -130,6 +131,8 @@ app =  do
                 Nothing -> text("oops, passwordConfirm param missing from form")
             Nothing -> text("oops, password param missing from form")
           Nothing -> text("oops, email param missing from form")
+    -- Currently this code will short circuit on the first Nothing, but
+    -- actually want to check all params and return errors on all params.
 
     -- TODO: Make accessible only for admins
     get "/allusers" $ do
@@ -139,6 +142,7 @@ app =  do
                                          in (personEmail e, personPassword e,personSalt e )) users)
 
     -- The user's public page
+    -- Display some publicly available information on the user on this page
     get ("/user" <//> var) $ \user -> (lucid $ profilePage user)
 
     -- The user's settings page
@@ -196,16 +200,19 @@ app =  do
         redirect "/"
 
 ---------------------- Lucid stuff -----------------------
+-- TODO: move out of Main.hs
 lucid :: MonadIO m => Html a1 -> ActionCtxT ctx m a
 lucid = lazyBytes . renderBS
 
 ---------------------- Persistent ------------------------
+-- TODO: move out of Main.hs
 runDB :: (HasSpock m, SpockConn m ~ SqlBackend) =>
          SqlPersistT (NoLoggingT (ResourceT IO)) a -> m a
 runDB action = runQuery $ \conn ->
     runResourceT $ runNoLoggingT $ runSqlConn action conn
 
 --------------- Hex / UnHex --------------------------
+-- TODO: move out of Main.hs
 makeHex :: BS.ByteString -> T.Text
 makeHex = T.decodeUtf8 . B16.encode
 {-# INLINE makeHex #-}
@@ -215,6 +222,7 @@ decodeHex = fst . B16.decode . T.encodeUtf8
 {-# INLINE decodeHex #-}
 
 --------------------- Crypto -----------------------------
+-- TODO: move out of Main.hs
 randomBytes:: Int -> StdGen -> [Word8]
 randomBytes 0 _ = []
 randomBytes ct g =
