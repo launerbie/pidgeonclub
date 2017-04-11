@@ -101,7 +101,7 @@ app =  do
         (lucid $ homePage)
 
     get "/contact" $ do
-        text("contact page")
+        simpleText ("contact page")
 
     post "/contact" $ do
         showRequest
@@ -117,7 +117,7 @@ app =  do
           Just email -> do
             mPerson <- runDB $ getBy (UniqueUsername $ T.toLower email)
             case mPerson of
-              Just person -> text("This user already exists")
+              Just person -> simpleText ("This user already exists")
               Nothing ->
                   case mPassword of
                     Just p1 -> case mPasswordConf of
@@ -129,12 +129,12 @@ app =  do
                                    mail = T.toLower email
                                runDB $ insert $ Person mail (makeHex hash) (makeHex salt)
                                liftIO $ print ("Added: "++ T.unpack mail)
-                               text("succes!")
+                               simpleText ("succes!")
                            else do
-                               text("passwords don't match!")
-                        Nothing -> text("oops, passwordConfirm param missing from form")
-                    Nothing -> text("oops, password param missing from form")
-          Nothing -> text("oops, email param missing from form")
+                               simpleText ("passwords don't match!")
+                        Nothing -> simpleText ("oops, passwordConfirm param missing from form")
+                    Nothing -> simpleText ("oops, password param missing from form")
+          Nothing -> simpleText ("oops, email param missing from form")
     -- Currently this code will short circuit on the first Nothing, but
     -- actually want to check all params and return errors on all params.
 
@@ -163,12 +163,12 @@ app =  do
                         mPerson <- runDB $ PSQL.get (sessiePersonId sess)
                         liftIO $ print mPerson
                         case mPerson of
-                            Just p -> text(T.pack $ show $ personEmail p)
-                            Nothing -> text("user doesn't exist anymore")
-                        text("person exists")
-                    Nothing -> text("Invalid session")
-                text("cool")
-            Nothing -> text("Please login first.")
+                            Just p -> simpleText (T.pack $ show $ personEmail p)
+                            Nothing -> simpleText ("user doesn't exist anymore")
+                        simpleText ("person exists")
+                    Nothing -> simpleText ("Invalid session")
+                simpleText ("cool")
+            Nothing -> simpleText ("Please login first.")
 
     get "/login" $ lucid loginPage
 
@@ -196,11 +196,11 @@ app =  do
                                liftIO $ print sid
                                liftIO $ print salt
                                writeSession (Just sid)
-                               text("Login succesful.")
-                       else text("Invalid email or password")
-                   Nothing -> text("Invalid email or password")
-            Nothing -> text("oops, password param missing from form")
-          Nothing -> text("oops, email param missing from form")
+                               simpleText ("Login succesful.")
+                       else simpleText ("Invalid email or password")
+                   Nothing -> simpleText ("Invalid email or password")
+            Nothing -> simpleText ("oops, password param missing from form")
+          Nothing -> simpleText ("oops, email param missing from form")
         redirect "/"
 
 ---------------------- Lucid stuff -----------------------
@@ -208,6 +208,8 @@ app =  do
 lucid :: MonadIO m => Html a1 -> ActionCtxT ctx m a
 lucid = lazyBytes . renderBS
 
+simpleText :: MonadIO m => T.Text -> ActionCtxT ctx m a
+simpleText x = lucid (simplePage x)
 ---------------------- Persistent ------------------------
 -- TODO: move out of Main.hs
 runDB :: (HasSpock m, SpockConn m ~ SqlBackend) =>

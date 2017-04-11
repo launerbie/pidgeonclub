@@ -72,6 +72,11 @@ homePage = basePage Home $ do
       (h1_ "Het probleem")
       (p_ hetprobleem)
 
+simplePage :: T.Text -> Html ()
+simplePage x = basePage Home $ do
+  div_ [class_ "container"] $ do
+      (p_ $ toHtml x)
+
 loginPage :: Html ()
 loginPage = basePage Login suchHorizontalLoginForm
 
