@@ -72,6 +72,11 @@ homePage = basePage Home $ do
       (h1_ "Het probleem")
       (p_ hetprobleem)
 
+simplePage :: T.Text -> Html ()
+simplePage x = basePage Home $ do
+  div_ [class_ "container"] $ do
+      (p_ $ toHtml x)
+
 loginPage :: Html ()
 loginPage = basePage Login suchHorizontalLoginForm
 
@@ -110,6 +115,7 @@ allUsersPage xs = basePage AllUsers $ do
             th_ "Salt"
           mapM_ makeRow3 xs
 
+-- Generalize to makeRow :: nrRows -> [T.Text] -> Html () ?
 makeRow3 :: (T.Text, T.Text, T.Text) -> Html ()
 makeRow3 (a,b,c) = tr_ $ do
                   td_ (toHtml a)

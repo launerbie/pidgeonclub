@@ -62,6 +62,7 @@ main = do
   pool <- dbpool sitecfg
   -- defaultSpockCfg :: sess -> PoolOrConn conn -> st -> IO (SpockCfg conn sess st)
   cfg <- defaultSpockCfg (Nothing) pool (AppState sitecfg)
+  -- TODO: get port from cmd argument
   runSpock 8080 (spock cfg app)
 
 dbpool :: PidgeonConfig -> IO (PoolOrConn SqlBackend)
@@ -100,7 +101,7 @@ app =  do
         (lucid $ homePage)
 
     get "/contact" $ do
-        text("contact page")
+        simpleText ("contact page")
 
     post "/contact" $ do
         showRequest
@@ -109,27 +110,33 @@ app =  do
         lucid (signupPage Nothing)
 
     post "/signup" $ do
-        email <- param "email"
-        password <- param "password"
-        passwordConf <- param "passwordConfirm"
-        -- TODO: Check if email isn't already in database
-        case email of
-          Just e -> case password of
-            Just p1 -> case passwordConf of
-                Just p2 ->
-                   if p1 == p2 then do
-                       g <- liftIO $ newStdGen
-                       let salt = randomBS 16 g
-                           hash = hashPassword p1 salt
-                           mail = T.toLower e
-                       runDB $ insert $ Person mail (makeHex hash) (makeHex salt)
-                       liftIO $ print ("Added: "++ T.unpack e)
-                       text("succes!")
-                   else do
-                       text("passwords don't match!")
-                Nothing -> text("oops, passwordConfirm param missing from form")
-            Nothing -> text("oops, password param missing from form")
-          Nothing -> text("oops, email param missing from form")
+        mEmail <- param "email"
+        mPassword <- param "password"
+        mPasswordConf <- param "passwordConfirm"
+        case mEmail of
+          Just email -> do
+            mPerson <- runDB $ getBy (UniqueUsername $ T.toLower email)
+            case mPerson of
+              Just person -> simpleText ("This user already exists")
+              Nothing ->
+                  case mPassword of
+                    Just p1 -> case mPasswordConf of
+                        Just p2 ->
+                           if p1 == p2 then do
+                               g <- liftIO $ newStdGen
+                               let salt = randomBS 16 g
+                                   hash = hashPassword p1 salt
+                                   mail = T.toLower email
+                               runDB $ insert $ Person mail (makeHex hash) (makeHex salt)
+                               liftIO $ print ("Added: "++ T.unpack mail)
+                               simpleText ("succes!")
+                           else do
+                               simpleText ("passwords don't match!")
+                        Nothing -> simpleText ("oops, passwordConfirm param missing from form")
+                    Nothing -> simpleText ("oops, password param missing from form")
+          Nothing -> simpleText ("oops, email param missing from form")
+    -- Currently this code will short circuit on the first Nothing, but
+    -- actually want to check all params and return errors on all params.
 
     -- TODO: Make accessible only for admins
     get "/allusers" $ do
@@ -139,6 +146,7 @@ app =  do
                                          in (personEmail e, personPassword e,personSalt e )) users)
 
     -- The user's public page
+    -- Display some publicly available information on the user on this page
     get ("/user" <//> var) $ \user -> (lucid $ profilePage user)
 
     -- The user's settings page
@@ -155,12 +163,12 @@ app =  do
                         mPerson <- runDB $ PSQL.get (sessiePersonId sess)
                         liftIO $ print mPerson
                         case mPerson of
-                            Just p -> text(T.pack $ show $ personEmail p)
-                            Nothing -> text("user doesn't exist anymore")
-                        text("person exists")
-                    Nothing -> text("Invalid session")
-                text("cool")
-            Nothing -> text("Please login first.")
+                            Just p -> simpleText (T.pack $ show $ personEmail p)
+                            Nothing -> simpleText ("user doesn't exist anymore")
+                        simpleText ("person exists")
+                    Nothing -> simpleText ("Invalid session")
+                simpleText ("cool")
+            Nothing -> simpleText ("Please login first.")
 
     get "/login" $ lucid loginPage
 
@@ -188,24 +196,29 @@ app =  do
                                liftIO $ print sid
                                liftIO $ print salt
                                writeSession (Just sid)
-                               text("Login succesful.")
-                       else text("Invalid email or password")
-                   Nothing -> text("Invalid email or password")
-            Nothing -> text("oops, password param missing from form")
-          Nothing -> text("oops, email param missing from form")
+                               simpleText ("Login succesful.")
+                       else simpleText ("Invalid email or password")
+                   Nothing -> simpleText ("Invalid email or password")
+            Nothing -> simpleText ("oops, password param missing from form")
+          Nothing -> simpleText ("oops, email param missing from form")
         redirect "/"
 
 ---------------------- Lucid stuff -----------------------
+-- TODO: move out of Main.hs
 lucid :: MonadIO m => Html a1 -> ActionCtxT ctx m a
 lucid = lazyBytes . renderBS
 
+simpleText :: MonadIO m => T.Text -> ActionCtxT ctx m a
+simpleText x = lucid (simplePage x)
 ---------------------- Persistent ------------------------
+-- TODO: move out of Main.hs
 runDB :: (HasSpock m, SpockConn m ~ SqlBackend) =>
          SqlPersistT (NoLoggingT (ResourceT IO)) a -> m a
 runDB action = runQuery $ \conn ->
     runResourceT $ runNoLoggingT $ runSqlConn action conn
 
 --------------- Hex / UnHex --------------------------
+-- TODO: move out of Main.hs
 makeHex :: BS.ByteString -> T.Text
 makeHex = T.decodeUtf8 . B16.encode
 {-# INLINE makeHex #-}
@@ -215,6 +228,7 @@ decodeHex = fst . B16.decode . T.encodeUtf8
 {-# INLINE decodeHex #-}
 
 --------------------- Crypto -----------------------------
+-- TODO: move out of Main.hs
 randomBytes:: Int -> StdGen -> [Word8]
 randomBytes 0 _ = []
 randomBytes ct g =
