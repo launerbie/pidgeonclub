@@ -56,6 +56,7 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
     creator PersonId
     time UTCTime
     package PackageId
+    deriving Show
 |]
 
 data PidgeonConfig = PidgeonConfig
