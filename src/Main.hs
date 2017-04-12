@@ -141,7 +141,6 @@ app =  do
     -- TODO: Make accessible only for admins
     get "/allusers" $ do
         users <- runDB $ selectList [] [Asc PersonEmail] -- [Entity record]
-        liftIO $ print $ map entityVal users
         lucid $ allUsersPage (map (\u -> let e = entityVal u
                                          in (personEmail e, personPassword e,personSalt e )) users)
 
@@ -194,7 +193,6 @@ app =  do
                        if hash == (makeHex $ hashPassword p (decodeHex $ salt))
                        then do sid <- runDB $ insert (Sessie validTil person)
                                liftIO $ print sid
-                               liftIO $ print salt
                                writeSession (Just sid)
                                simpleText ("Login succesful.")
                        else simpleText ("Invalid email or password")
