@@ -127,7 +127,7 @@ app =  do
                                let salt = randomBS 16 g
                                    hash = hashPassword p1 salt
                                    mail = T.toLower email
-                               runDB $ insert $ Person mail (makeHex hash) (makeHex salt)
+                               runDB $ insert $ Person mail (makeHex hash) (makeHex salt) Nothing
                                liftIO $ print ("Added: "++ T.unpack mail)
                                simpleText ("succes!")
                            else do
