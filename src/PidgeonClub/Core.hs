@@ -25,7 +25,7 @@ import Web.Spock hiding (SessionId)
 import Web.Spock.Action
 
 --------------------- PidgeonClub ----------------------
-import PidgeonClub.Actions
+--import PidgeonClub.Actions
 import PidgeonClub.Types
 import PidgeonClub.Views
 

@@ -100,12 +100,6 @@ app =  do
         liftIO $ print r
         (lucid $ homePage)
 
-    get "/contact" $ do
-        simpleText ("contact page")
-
-    post "/contact" $ do
-        showRequest
-
     get "/signup" $ do
         lucid (signupPage Nothing)
 
@@ -150,11 +144,11 @@ app =  do
 
     -- The user's settings page
     get "/profile" $ do
-        mSession <- readSession
+        mSession <- readSession -- :: Maybe SessieKey
         liftIO $ print mSession
         case mSession of
             Just sid -> do
-                mSid <- runDB $ PSQL.get sid
+                mSid <- runDB $ PSQL.get sid -- :: Maybe Sessie
                 liftIO $ print mSid
                 case mSid of
                     Just sess -> do
@@ -200,6 +194,18 @@ app =  do
             Nothing -> simpleText ("oops, password param missing from form")
           Nothing -> simpleText ("oops, email param missing from form")
         redirect "/"
+
+requireUser :: (Person -> PidgeonAction a) -> PidgeonAction a
+requireUser = undefined
+ --       mSession <- readSession
+ --       liftIO $ print mSession
+ --       mUser <- getUserFromSession sess
+ --       case mUser of
+ --          Nothing -> text "Sorry, no access!"
+ --          Just user -> action user
+
+getUserFromSession :: Sessie -> Maybe Person
+getUserFromSession sess = do
 
 ---------------------- Lucid stuff -----------------------
 -- TODO: move out of Main.hs
