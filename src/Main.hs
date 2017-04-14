@@ -93,12 +93,7 @@ app :: PidgeonApp () ()
 app =  do
     middleware (staticPolicy (addBase "static"))
 
-    get "/" $ do
-        sid <- getSessionId
-        r <- readSession
-        liftIO $ print sid
-        liftIO $ print r
-        (lucid $ homePage)
+    get "/" $ lucid homePage
 
     get "/signup" $ do
         lucid (signupPage Nothing)
@@ -129,10 +124,12 @@ app =  do
                         Nothing -> simpleText ("oops, passwordConfirm param missing from form")
                     Nothing -> simpleText ("oops, password param missing from form")
           Nothing -> simpleText ("oops, email param missing from form")
+    -- TODO:
     -- Currently this code will short circuit on the first Nothing, but
     -- actually want to check all params and return errors on all params.
 
     -- TODO: Make accessible only for admins
+    -- TODO: For now, just add requireUser
     get "/allusers" $ do
         users <- runDB $ selectList [] [Asc PersonEmail] -- [Entity record]
         lucid $ allUsersPage (map (\u -> let e = entityVal u
@@ -143,26 +140,12 @@ app =  do
     get ("/user" <//> var) $ \user -> (lucid $ profilePage user)
 
     -- The user's settings page
-    get "/profile" $ do
-        mSessionId <- readSession -- :: Maybe SessieKey
-        liftIO $ print mSessionId
-        case mSessionId of
-            Just sid -> do
-                mSid <- runDB $ PSQL.get sid -- :: Maybe Sessie
-                liftIO $ print mSid
-                case mSid of
-                    Just sess -> do
-                        liftIO $ print sess
-                        -- TODO: check if sess is not expired
-                        mPerson <- runDB $ PSQL.get (sessiePersonId sess)
-                        liftIO $ print mPerson
-                        case mPerson of
-                            Just p -> simpleText (T.pack $ show $ personEmail p)
-                            Nothing -> simpleText ("user doesn't exist anymore")
-                        simpleText ("person exists")
-                    Nothing -> simpleText ("Invalid session")
-                simpleText ("cool")
-            Nothing -> simpleText ("Please login first.")
+    get "/profile" $ requireUser $ \u -> do
+        liftIO $ print u
+        mPerson <- runDB $ PSQL.get u
+        case mPerson of
+            Just p -> simpleText $ "Logged in as: " <> personEmail p
+            Nothing -> simpleText "user doesn't exist anymore"
 
     get "/login" $ lucid loginPage
 
@@ -202,9 +185,9 @@ requireUser action = do
     Just sess -> do
       mPersonId <- getUserFromSession sess
       case mPersonId of
-         Nothing -> text "Sorry, no access!"
+         Nothing -> simpleText "Sorry, no access!"
          Just user -> action user
-    Nothing -> text "Need to be logged in"
+    Nothing -> simpleText "Please login first"
 
 getUserFromSession :: SessieId -> PidgeonAction (Maybe PersonId)
 getUserFromSession sid = do
@@ -216,7 +199,6 @@ getUserFromSession sid = do
           -- TODO: check if sess is not expired
           return $ Just (sessiePersonId sess)
       Nothing -> simpleText ("Invalid session")
-
 
 ---------------------- Lucid stuff -----------------------
 -- TODO: move out of Main.hs
