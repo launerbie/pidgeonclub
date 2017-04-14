@@ -200,14 +200,23 @@ requireUser action = do
   mSessid <- readSession
   case mSessid of
     Just sess -> do
-      mUser <- runDB $ getUserFromSession sess
-      case mUser of
+      mPersonId <- getUserFromSession sess
+      case mPersonId of
          Nothing -> text "Sorry, no access!"
          Just user -> action user
     Nothing -> text "Need to be logged in"
 
-getUserFromSession :: SessieId -> SqlPersistM (Maybe PersonId)
-getUserFromSession sess = undefined
+getUserFromSession :: SessieId -> PidgeonAction (Maybe PersonId)
+getUserFromSession sid = do
+  mSid <- runDB $ PSQL.get sid -- :: Maybe Sessie
+  liftIO $ print mSid
+  case mSid of
+      Just sess -> do
+          liftIO $ print sess
+          -- TODO: check if sess is not expired
+          return $ Just (sessiePersonId sess)
+      Nothing -> simpleText ("Invalid session")
+
 
 ---------------------- Lucid stuff -----------------------
 -- TODO: move out of Main.hs
