@@ -25,7 +25,7 @@ import Web.Spock hiding (SessionId)
 import Web.Spock.Action
 
 --------------------- PidgeonClub ----------------------
-import PidgeonClub.Actions
+--import PidgeonClub.Actions
 import PidgeonClub.Types
 import PidgeonClub.Views
 
@@ -33,19 +33,30 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
   Sessie
     validUntil UTCTime
     personId PersonId
-    deriving Eq Show
+    deriving Show
   Person
     email T.Text
     password T.Text
     salt T.Text
+    username T.Text Maybe
     UniqueUsername email
-    deriving Eq Show
-  Geodata
-    latitude Int
-    longitude Int
-    zipcode String Maybe
-    personId PersonId
-    deriving Eq Show
+    deriving Show
+  Package
+    receiver PersonId
+    sender PersonId
+    destination LocationId
+    source LocationId
+    deriving Show
+  Location
+    latitude Double
+    longitude Double
+    deriving Show
+  Message
+    message T.Text
+    creator PersonId
+    time UTCTime
+    package PackageId
+    deriving Show
 |]
 
 data PidgeonConfig = PidgeonConfig

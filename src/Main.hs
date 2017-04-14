@@ -93,18 +93,7 @@ app :: PidgeonApp () ()
 app =  do
     middleware (staticPolicy (addBase "static"))
 
-    get "/" $ do
-        sid <- getSessionId
-        r <- readSession
-        liftIO $ print sid
-        liftIO $ print r
-        (lucid $ homePage)
-
-    get "/contact" $ do
-        simpleText ("contact page")
-
-    post "/contact" $ do
-        showRequest
+    get "/" $ lucid homePage
 
     get "/signup" $ do
         lucid (signupPage Nothing)
@@ -127,7 +116,7 @@ app =  do
                                let salt = randomBS 16 g
                                    hash = hashPassword p1 salt
                                    mail = T.toLower email
-                               runDB $ insert $ Person mail (makeHex hash) (makeHex salt)
+                               runDB $ insert $ Person mail (makeHex hash) (makeHex salt) Nothing
                                liftIO $ print ("Added: "++ T.unpack mail)
                                simpleText ("succes!")
                            else do
@@ -135,13 +124,14 @@ app =  do
                         Nothing -> simpleText ("oops, passwordConfirm param missing from form")
                     Nothing -> simpleText ("oops, password param missing from form")
           Nothing -> simpleText ("oops, email param missing from form")
+    -- TODO:
     -- Currently this code will short circuit on the first Nothing, but
     -- actually want to check all params and return errors on all params.
 
     -- TODO: Make accessible only for admins
+    -- TODO: For now, just add requireUser
     get "/allusers" $ do
         users <- runDB $ selectList [] [Asc PersonEmail] -- [Entity record]
-        liftIO $ print $ map entityVal users
         lucid $ allUsersPage (map (\u -> let e = entityVal u
                                          in (personEmail e, personPassword e,personSalt e )) users)
 
@@ -150,25 +140,12 @@ app =  do
     get ("/user" <//> var) $ \user -> (lucid $ profilePage user)
 
     -- The user's settings page
-    get "/profile" $ do
-        mSession <- readSession
-        liftIO $ print mSession
-        case mSession of
-            Just sid -> do
-                mSid <- runDB $ PSQL.get sid
-                liftIO $ print mSid
-                case mSid of
-                    Just sess -> do
-                        -- TODO: check if sess is not expired
-                        mPerson <- runDB $ PSQL.get (sessiePersonId sess)
-                        liftIO $ print mPerson
-                        case mPerson of
-                            Just p -> simpleText (T.pack $ show $ personEmail p)
-                            Nothing -> simpleText ("user doesn't exist anymore")
-                        simpleText ("person exists")
-                    Nothing -> simpleText ("Invalid session")
-                simpleText ("cool")
-            Nothing -> simpleText ("Please login first.")
+    get "/profile" $ requireUser $ \u -> do
+        liftIO $ print u
+        mPerson <- runDB $ PSQL.get u
+        case mPerson of
+            Just p -> simpleText $ "Logged in as: " <> personEmail p
+            Nothing -> simpleText "user doesn't exist anymore"
 
     get "/login" $ lucid loginPage
 
@@ -185,7 +162,6 @@ app =  do
                    Just personEntity -> do
                        liftIO $ print personEntity
                        now <- liftIO getCurrentTime
-
                        let validTil = addUTCTime 3600 now
                            person = entityKey personEntity
                            salt = personSalt $ entityVal personEntity
@@ -194,7 +170,6 @@ app =  do
                        if hash == (makeHex $ hashPassword p (decodeHex $ salt))
                        then do sid <- runDB $ insert (Sessie validTil person)
                                liftIO $ print sid
-                               liftIO $ print salt
                                writeSession (Just sid)
                                simpleText ("Login succesful.")
                        else simpleText ("Invalid email or password")
@@ -202,6 +177,28 @@ app =  do
             Nothing -> simpleText ("oops, password param missing from form")
           Nothing -> simpleText ("oops, email param missing from form")
         redirect "/"
+
+requireUser :: (Key Person -> PidgeonAction a) -> PidgeonAction a
+requireUser action = do
+  mSessid <- readSession
+  case mSessid of
+    Just sess -> do
+      mPersonId <- getUserFromSession sess
+      case mPersonId of
+         Nothing -> simpleText "Sorry, no access!"
+         Just user -> action user
+    Nothing -> simpleText "Please login first"
+
+getUserFromSession :: SessieId -> PidgeonAction (Maybe PersonId)
+getUserFromSession sid = do
+  mSid <- runDB $ PSQL.get sid -- :: Maybe Sessie
+  liftIO $ print mSid
+  case mSid of
+      Just sess -> do
+          liftIO $ print sess
+          -- TODO: check if sess is not expired
+          return $ Just (sessiePersonId sess)
+      Nothing -> simpleText ("Invalid session")
 
 ---------------------- Lucid stuff -----------------------
 -- TODO: move out of Main.hs
@@ -213,7 +210,7 @@ simpleText x = lucid (simplePage x)
 ---------------------- Persistent ------------------------
 -- TODO: move out of Main.hs
 runDB :: (HasSpock m, SpockConn m ~ SqlBackend) =>
-         SqlPersistT (NoLoggingT (ResourceT IO)) a -> m a
+         SqlPersistM a -> m a
 runDB action = runQuery $ \conn ->
     runResourceT $ runNoLoggingT $ runSqlConn action conn
 

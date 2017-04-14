@@ -7,7 +7,6 @@ import qualified Data.Text as T
 import Lucid
 import Lucid.Base (makeAttribute)
 
-import PidgeonClub.Actions
 import PidgeonClub.Types
 
 -- TODO: Login dependent menu, i.e. if not logged in, don't show the profile url in nav
@@ -21,14 +20,11 @@ data Page = Home
           | Signup
           deriving (Eq, Show)
 
-pageTitle_ :: Page -> Html ()
-pageTitle_ p = toHtml $ (show p)++" | Pidgeon Club"
-
 basePage :: Page -> Html () -> Html ()
 basePage p content=
   html_ [lang_ "en"] $ do
       head_ $ do
-          title_ (pageTitle_ p)
+          title_ (toHtml $ (show p)++" | Pidgeon Club")
           meta_ [name_ "viewport", content_ "width=device-width, initial-scale=1"]
           link_ [rel_ "stylesheet",type_ "text/css",href_ "/css/bootstrap.min.css"]
       body_ $ do
@@ -122,9 +118,6 @@ makeRow3 (a,b,c) = tr_ $ do
                   td_ (toHtml b)
                   td_ (toHtml c)
 
-
-hetprobleem = "Na een drukke dag komt u 's avonds thuis, er ligt een briefje op de mat.\n\"Helaas hebben wij u vandaag niet thuis aangetroffen, wij proberen het morgen nogmaals.....\"\nHet pakketje, dat u gisteren via uw favoriete webshop heeft besteld, wordt morgen bezorgd. Maar ook morgen moet u werken en zal de postbode u weer niet thuis aantreffen.....\nU heeft uw pakketje echt nodig, erg onhandig en niet klantvriendelijk!!\n2 De lamp die jullie op het oog hebben, kan alleen via internet besteld worden.\nHelaas zijn jullie deze week alle twee overdag niet thuis.....\nWaar en wanneer moet u uw lamp nu laten bezorgen?\n3 De nieuwe schoenen, die u online heeft besteld, passen niet, u kunt ze kosteloos retourneren. Maar waar vind u de tijd om naar het postkantoor te gaan?\nDit zijn enkele voorbeelden die iedereen herkent. U heeft iets via internet besteld maar u moet zich aanpassen aan de levertijden van de bezorger."
-
 emptyDiv :: String -> Html ()
 emptyDiv t = div_ [class_ "container"] (p_ $ toHtml t)
 
@@ -196,3 +189,6 @@ alert [] = mempty
 alert xs = div_ [class_ "alert alert-danger alert-dismissable"] $ do
               ul_ $ do
                 mapM_ (li_ . toHtml) xs
+
+hetprobleem = "Na een drukke dag komt u 's avonds thuis, er ligt een briefje op de mat.\n\"Helaas hebben wij u vandaag niet thuis aangetroffen, wij proberen het morgen nogmaals.....\"\nHet pakketje, dat u gisteren via uw favoriete webshop heeft besteld, wordt morgen bezorgd. Maar ook morgen moet u werken en zal de postbode u weer niet thuis aantreffen.....\nU heeft uw pakketje echt nodig, erg onhandig en niet klantvriendelijk!!\n2 De lamp die jullie op het oog hebben, kan alleen via internet besteld worden.\nHelaas zijn jullie deze week alle twee overdag niet thuis.....\nWaar en wanneer moet u uw lamp nu laten bezorgen?\n3 De nieuwe schoenen, die u online heeft besteld, passen niet, u kunt ze kosteloos retourneren. Maar waar vind u de tijd om naar het postkantoor te gaan?\nDit zijn enkele voorbeelden die iedereen herkent. U heeft iets via internet besteld maar u moet zich aanpassen aan de levertijden van de bezorger."
+
