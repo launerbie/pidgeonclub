@@ -144,14 +144,15 @@ app =  do
 
     -- The user's settings page
     get "/profile" $ do
-        mSession <- readSession -- :: Maybe SessieKey
-        liftIO $ print mSession
-        case mSession of
+        mSessionId <- readSession -- :: Maybe SessieKey
+        liftIO $ print mSessionId
+        case mSessionId of
             Just sid -> do
                 mSid <- runDB $ PSQL.get sid -- :: Maybe Sessie
                 liftIO $ print mSid
                 case mSid of
                     Just sess -> do
+                        liftIO $ print sess
                         -- TODO: check if sess is not expired
                         mPerson <- runDB $ PSQL.get (sessiePersonId sess)
                         liftIO $ print mPerson
@@ -178,7 +179,6 @@ app =  do
                    Just personEntity -> do
                        liftIO $ print personEntity
                        now <- liftIO getCurrentTime
-
                        let validTil = addUTCTime 3600 now
                            person = entityKey personEntity
                            salt = personSalt $ entityVal personEntity
@@ -195,17 +195,19 @@ app =  do
           Nothing -> simpleText ("oops, email param missing from form")
         redirect "/"
 
-requireUser :: (Person -> PidgeonAction a) -> PidgeonAction a
-requireUser = undefined
- --       mSession <- readSession
- --       liftIO $ print mSession
- --       mUser <- getUserFromSession sess
- --       case mUser of
- --          Nothing -> text "Sorry, no access!"
- --          Just user -> action user
+requireUser :: (Key Person -> PidgeonAction a) -> PidgeonAction a
+requireUser action = do
+  mSessid <- readSession
+  case mSessid of
+    Just sess -> do
+      mUser <- runDB $ getUserFromSession sess
+      case mUser of
+         Nothing -> text "Sorry, no access!"
+         Just user -> action user
+    Nothing -> text "Need to be logged in"
 
-getUserFromSession :: Sessie -> Maybe Person
-getUserFromSession sess = do
+getUserFromSession :: SessieId -> SqlPersistM (Maybe PersonId)
+getUserFromSession sess = undefined
 
 ---------------------- Lucid stuff -----------------------
 -- TODO: move out of Main.hs
@@ -217,7 +219,7 @@ simpleText x = lucid (simplePage x)
 ---------------------- Persistent ------------------------
 -- TODO: move out of Main.hs
 runDB :: (HasSpock m, SpockConn m ~ SqlBackend) =>
-         SqlPersistT (NoLoggingT (ResourceT IO)) a -> m a
+         SqlPersistM a -> m a
 runDB action = runQuery $ \conn ->
     runResourceT $ runNoLoggingT $ runSqlConn action conn
 
