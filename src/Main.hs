@@ -178,6 +178,11 @@ app =  do
           Nothing -> simpleText ("oops, email param missing from form")
         redirect "/"
 
+    get "/logout" $ requireUser $ \u -> do
+        killSessions u
+        writeSession Nothing
+        redirect "/"
+
 requireUser :: (Key Person -> PidgeonAction a) -> PidgeonAction a
 requireUser action = do
   mSessid <- readSession
@@ -201,6 +206,9 @@ getUserFromSession sid = do
             then return $ Just (sessiePersonId sess)
             else simpleText ("Session has expired")
       Nothing -> simpleText ("Invalid session")
+
+killSessions :: PersonId -> PidgeonAction ()
+killSessions pId = runDB $ deleteWhere [ SessiePersonId ==. pId ]
 
 ---------------------- Lucid stuff -----------------------
 -- TODO: move out of Main.hs

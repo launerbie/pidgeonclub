@@ -10,6 +10,7 @@ import Lucid.Base (makeAttribute)
 import PidgeonClub.Types
 
 -- TODO: Login dependent menu, i.e. if not logged in, don't show the profile url in nav
+-- if logged in, show logout button.
 
 data Page = Home
           | About
@@ -17,8 +18,13 @@ data Page = Home
           | Contact
           | Profile
           | Login
+          | Logout
           | Signup
           deriving (Eq, Show)
+
+data View = View { activeOnNav :: Page
+                 , loggedIn :: Bool
+                 }
 
 basePage :: Page -> Html () -> Html ()
 basePage p content=
@@ -61,6 +67,9 @@ navigation p = do
              case p of
                  Login  -> li_ [class_ "active"] (a_ [href_ "/login"] "Login")
                  _      -> li_ (a_ [href_ "/login"]   "Login")
+             case p of
+                 Logout  -> li_ [class_ "active"] (a_ [href_ "/logout"] "Logout")
+                 _      -> li_ (a_ [href_ "/logout"]   "Logout")
 
 homePage :: Html ()
 homePage = basePage Home $ do
