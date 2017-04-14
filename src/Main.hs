@@ -196,8 +196,10 @@ getUserFromSession sid = do
   case mSid of
       Just sess -> do
           liftIO $ print sess
-          -- TODO: check if sess is not expired
-          return $ Just (sessiePersonId sess)
+          now <- liftIO getCurrentTime
+          if sessieValidUntil sess > now
+            then return $ Just (sessiePersonId sess)
+            else simpleText ("Session has expired")
       Nothing -> simpleText ("Invalid session")
 
 ---------------------- Lucid stuff -----------------------
@@ -239,4 +241,3 @@ randomBS len g =
 hashPassword :: T.Text -> BS.ByteString -> BS.ByteString
 hashPassword password salt =
      SHA.finalize $ SHA.updates SHA.init [salt, T.encodeUtf8 $ password]
-

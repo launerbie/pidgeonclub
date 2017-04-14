@@ -29,4 +29,11 @@ stack build
 stack exec pidgeonclub
 ```
 
+If there are database schema changes, it may be necessary to run:
+
+```bash
+dropdb myDatabasename && createdb myDatabasename
+```
+
+before starting the application.
 
