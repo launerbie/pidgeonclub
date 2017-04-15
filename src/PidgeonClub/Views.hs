@@ -8,6 +8,7 @@ import Lucid
 import Lucid.Base (makeAttribute)
 
 import PidgeonClub.Types
+import PidgeonClub.Lorem
 
 -- TODO: Login dependent menu, i.e. if not logged in, don't show the profile url in nav
 -- if logged in, show logout button.
@@ -74,8 +75,20 @@ navigation p = do
 homePage :: Html ()
 homePage = basePage Home $ do
   div_ [class_ "container"] $ do
-      (h1_ "Het probleem")
-      (p_ hetprobleem)
+      (h1_ "Lorem Ipsum")
+      (p_ $ toHtml lorem1)
+
+      (h1_ "Paketus Directus")
+      (p_ $ toHtml lorem2)
+
+      (h1_ "Facilus maximus")
+      (p_ $ toHtml lorem3)
+
+      (h1_ "Minem fringilla")
+      (p_ $ toHtml lorem4)
+
+      (h1_ "Pidgem Pidgus")
+      (p_ $ toHtml lorem5)
 
 simplePage :: T.Text -> Html ()
 simplePage x = basePage Home $ do
@@ -198,6 +211,4 @@ alert [] = mempty
 alert xs = div_ [class_ "alert alert-danger alert-dismissable"] $ do
               ul_ $ do
                 mapM_ (li_ . toHtml) xs
-
-hetprobleem = "Na een drukke dag komt u 's avonds thuis, er ligt een briefje op de mat.\n\"Helaas hebben wij u vandaag niet thuis aangetroffen, wij proberen het morgen nogmaals.....\"\nHet pakketje, dat u gisteren via uw favoriete webshop heeft besteld, wordt morgen bezorgd. Maar ook morgen moet u werken en zal de postbode u weer niet thuis aantreffen.....\nU heeft uw pakketje echt nodig, erg onhandig en niet klantvriendelijk!!\n2 De lamp die jullie op het oog hebben, kan alleen via internet besteld worden.\nHelaas zijn jullie deze week alle twee overdag niet thuis.....\nWaar en wanneer moet u uw lamp nu laten bezorgen?\n3 De nieuwe schoenen, die u online heeft besteld, passen niet, u kunt ze kosteloos retourneren. Maar waar vind u de tijd om naar het postkantoor te gaan?\nDit zijn enkele voorbeelden die iedereen herkent. U heeft iets via internet besteld maar u moet zich aanpassen aan de levertijden van de bezorger."
 
