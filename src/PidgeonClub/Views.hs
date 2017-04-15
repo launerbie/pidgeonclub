@@ -113,7 +113,7 @@ cellpadding_ :: T.Text -> Attribute
 cellpadding_ = makeAttribute "cellpadding_"
 
 allUsersPage :: [(T.Text, T.Text, T.Text)] -> Html ()
-allUsersPage xs = basePage AllUsers $ do
+allUsersPage xs = basePage Home $ do
   div_ [class_ "container"] $ do
      table_ [class_ "table table-bordered"] $ do
           tr_ $ do
