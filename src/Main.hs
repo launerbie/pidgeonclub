@@ -55,6 +55,7 @@ import Web.Spock.SessionActions (getSessionId, readSession, writeSession)
 import PidgeonClub.Views
 --import PidgeonClub.Actions
 import PidgeonClub.Core
+import PidgeonClub.Types
 
 main :: IO ()
 main = do
@@ -137,17 +138,19 @@ app =  do
 
     -- The user's public page
     -- Display some publicly available information on the user on this page
-    get ("/user" <//> var) $ \user -> (lucid $ profilePage user)
+    get ("/user" <//> var) $ \user -> (lucid $ userPage user)
 
     -- The user's settings page
     get "/profile" $ requireUser $ \u -> do
         liftIO $ print u
         mPerson <- runDB $ PSQL.get u
         case mPerson of
-            Just p -> simpleText $ "Logged in as: " <> personEmail p
+            Just p -> lucid $ profilePage p
             Nothing -> simpleText "user doesn't exist anymore"
 
     get "/login" $ lucid loginPage
+    --TODO: if already logged in, let the user know and
+    -- offer to log out.
 
     post "/login" $ do
         showRequest
@@ -178,6 +181,11 @@ app =  do
           Nothing -> simpleText ("oops, email param missing from form")
         redirect "/"
 
+    get "/logout" $ requireUser $ \u -> do
+        killSessions u
+        writeSession Nothing
+        redirect "/"
+
 requireUser :: (Key Person -> PidgeonAction a) -> PidgeonAction a
 requireUser action = do
   mSessid <- readSession
@@ -187,7 +195,7 @@ requireUser action = do
       case mPersonId of
          Nothing -> simpleText "Sorry, no access!"
          Just user -> action user
-    Nothing -> simpleText "Please login first"
+    Nothing -> simpleText "Not logged in."
 
 getUserFromSession :: SessieId -> PidgeonAction (Maybe PersonId)
 getUserFromSession sid = do
@@ -196,9 +204,14 @@ getUserFromSession sid = do
   case mSid of
       Just sess -> do
           liftIO $ print sess
-          -- TODO: check if sess is not expired
-          return $ Just (sessiePersonId sess)
+          now <- liftIO getCurrentTime
+          if sessieValidUntil sess > now
+            then return $ Just (sessiePersonId sess)
+            else simpleText ("Session has expired")
       Nothing -> simpleText ("Invalid session")
+
+killSessions :: PersonId -> PidgeonAction ()
+killSessions pId = runDB $ deleteWhere [ SessiePersonId ==. pId ]
 
 ---------------------- Lucid stuff -----------------------
 -- TODO: move out of Main.hs
@@ -239,4 +252,3 @@ randomBS len g =
 hashPassword :: T.Text -> BS.ByteString -> BS.ByteString
 hashPassword password salt =
      SHA.finalize $ SHA.updates SHA.init [salt, T.encodeUtf8 $ password]
-

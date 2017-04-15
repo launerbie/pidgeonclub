@@ -1,22 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-{-# LANGUAGE EmptyDataDecls             #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE GADTs                      #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE QuasiQuotes                #-}
-{-# LANGUAGE TemplateHaskell            #-}
-{-# LANGUAGE TypeFamilies               #-}
-
 module PidgeonClub.Core where
 
 import Control.Monad.Trans
 import Control.Monad.Trans.Maybe
 import Control.Monad
 import Database.Persist.Sql
-import Database.Persist.TH
-import Data.Time (UTCTime, getCurrentTime, addUTCTime)
 
 import qualified Data.Text as T
 import Network.Socket (HostName)
@@ -28,36 +17,6 @@ import Web.Spock.Action
 --import PidgeonClub.Actions
 import PidgeonClub.Types
 import PidgeonClub.Views
-
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
-  Sessie
-    validUntil UTCTime
-    personId PersonId
-    deriving Show
-  Person
-    email T.Text
-    password T.Text
-    salt T.Text
-    username T.Text Maybe
-    UniqueUsername email
-    deriving Show
-  Package
-    receiver PersonId
-    sender PersonId
-    destination LocationId
-    source LocationId
-    deriving Show
-  Location
-    latitude Double
-    longitude Double
-    deriving Show
-  Message
-    message T.Text
-    creator PersonId
-    time UTCTime
-    package PackageId
-    deriving Show
-|]
 
 data PidgeonConfig = PidgeonConfig
     { dbHost :: HostName
