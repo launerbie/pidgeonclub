@@ -55,6 +55,7 @@ import Web.Spock.SessionActions (getSessionId, readSession, writeSession)
 import PidgeonClub.Views
 --import PidgeonClub.Actions
 import PidgeonClub.Core
+import PidgeonClub.Types
 
 main :: IO ()
 main = do
