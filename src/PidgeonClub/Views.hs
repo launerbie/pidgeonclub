@@ -95,12 +95,12 @@ loginPage = basePage Login suchHorizontalLoginForm
 signupPage :: Maybe SignupError -> Html ()
 signupPage e = basePage Signup (signupForm e)
 
-profilePage :: T.Text -> T.Text -> T.Text -> Html ()
-profilePage email password salt = basePage Profile $ do
+profilePage :: Person -> Html ()
+profilePage p = basePage Profile $ do
   div_ [class_ "container"] $ do
-     p_ $ toHtml email
-     p_ $ toHtml password
-     p_ $ toHtml salt
+     p_ $ toHtml $ personEmail p
+     p_ $ toHtml $ personPassword p
+     p_ $ toHtml $ personSalt p
 
 userPage :: String -> Html ()
 userPage email = basePage Profile $ do

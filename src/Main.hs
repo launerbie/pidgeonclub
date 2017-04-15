@@ -145,10 +145,12 @@ app =  do
         liftIO $ print u
         mPerson <- runDB $ PSQL.get u
         case mPerson of
-            Just p -> lucid $ profilePage (personEmail p) (personPassword p) (personSalt p)
+            Just p -> lucid $ profilePage p
             Nothing -> simpleText "user doesn't exist anymore"
 
     get "/login" $ lucid loginPage
+    --TODO: if already logged in, let the user know and
+    -- offer to log out.
 
     post "/login" $ do
         showRequest
