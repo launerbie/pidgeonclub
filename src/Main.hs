@@ -137,14 +137,14 @@ app =  do
 
     -- The user's public page
     -- Display some publicly available information on the user on this page
-    get ("/user" <//> var) $ \user -> (lucid $ profilePage user)
+    get ("/user" <//> var) $ \user -> (lucid $ userPage user)
 
     -- The user's settings page
     get "/profile" $ requireUser $ \u -> do
         liftIO $ print u
         mPerson <- runDB $ PSQL.get u
         case mPerson of
-            Just p -> simpleText $ "Logged in as: " <> personEmail p
+            Just p -> lucid $ profilePage (personEmail p) (personPassword p) (personSalt p)
             Nothing -> simpleText "user doesn't exist anymore"
 
     get "/login" $ lucid loginPage

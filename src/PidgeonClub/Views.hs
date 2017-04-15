@@ -54,7 +54,7 @@ navigation p = do
                  Home   -> li_ [class_ "active"] (a_ [href_ "/"] "Home")
                  _      -> li_ (a_ [href_ "/"] "Home")
              case p of
-                 Profile  -> li_ [class_ "active"] (a_ [href_ "/"] "Profile")
+                 Profile  -> li_ [class_ "active"] (a_ [href_ "/profile"] "Profile")
                  _      -> li_ (a_ [href_ "/profile"] "Profile")
              case p of
                  Signup -> li_ [class_ "active"] (a_ [href_ "/signup"] "Sign Up")
@@ -95,11 +95,17 @@ loginPage = basePage Login suchHorizontalLoginForm
 signupPage :: Maybe SignupError -> Html ()
 signupPage e = basePage Signup (signupForm e)
 
-profilePage :: String -> Html ()
-profilePage email = basePage Profile $ do
+profilePage :: T.Text -> T.Text -> T.Text -> Html ()
+profilePage email password salt = basePage Profile $ do
   div_ [class_ "container"] $ do
      p_ $ toHtml email
+     p_ $ toHtml password
+     p_ $ toHtml salt
 
+userPage :: String -> Html ()
+userPage email = basePage Profile $ do
+  div_ [class_ "container"] $ do
+     p_ $ toHtml email
 
 -- ### Additional Attributes
 -- border: A table attribute
