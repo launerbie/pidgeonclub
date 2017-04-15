@@ -192,7 +192,7 @@ requireUser action = do
       case mPersonId of
          Nothing -> simpleText "Sorry, no access!"
          Just user -> action user
-    Nothing -> simpleText "Please login first"
+    Nothing -> simpleText "Not logged in."
 
 getUserFromSession :: SessieId -> PidgeonAction (Maybe PersonId)
 getUserFromSession sid = do
