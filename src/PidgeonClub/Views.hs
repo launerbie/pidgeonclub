@@ -14,9 +14,6 @@ import PidgeonClub.Lorem
 -- if logged in, show logout button.
 
 data Page = Home
-          | About
-          | AllUsers
-          | Contact
           | Profile
           | Login
           | Logout
@@ -56,9 +53,6 @@ navigation p = do
              case p of
                  Home   -> li_ [class_ "active"] (a_ [href_ "/"] "Home")
                  _      -> li_ (a_ [href_ "/"] "Home")
-             case p of
-                 AllUsers  -> li_ [class_ "active"] (a_ [href_ "/"] "AllUsers")
-                 _      -> li_ (a_ [href_ "/allusers"] "AllUsers")
              case p of
                  Profile  -> li_ [class_ "active"] (a_ [href_ "/"] "Profile")
                  _      -> li_ (a_ [href_ "/profile"] "Profile")
@@ -100,11 +94,6 @@ loginPage = basePage Login suchHorizontalLoginForm
 
 signupPage :: Maybe SignupError -> Html ()
 signupPage e = basePage Signup (signupForm e)
-
-contactPage :: Html ()
-contactPage = basePage Contact $ do
-  div_ [class_ "container"] $ do
-     p_ "contact page"
 
 profilePage :: String -> Html ()
 profilePage email = basePage Profile $ do
