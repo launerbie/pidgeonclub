@@ -94,7 +94,10 @@ app :: PidgeonApp () ()
 app =  do
     middleware (staticPolicy (addBase "static"))
 
-    get "/" $ lucid homePage
+    get "/" $ do
+        showRequest
+        r <- request
+        lucid homePage
 
     get "/signup" $ do
         lucid (signupPage Nothing)

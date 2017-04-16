@@ -8,6 +8,7 @@ import Control.Monad
 import Database.Persist.Sql
 
 import qualified Data.Text as T
+import Text.Pretty.Simple (pPrint)
 import Network.Socket (HostName)
 import Lucid
 import Web.Spock hiding (SessionId)
@@ -36,7 +37,7 @@ showRequest :: PidgeonAction ()
 showRequest = do
     r <- request
     p <- params
-    liftIO $ do print (show r)
+    liftIO $ do pPrint r
                 print p
 
 

@@ -33,6 +33,7 @@ executable pidgeonclub
                      , persistent-postgresql
                      , persistent-sqlite
                      , persistent-template
+                     , pretty-simple
                      , path-pieces
                      , random
                      , resourcet
