@@ -175,13 +175,14 @@ app =  do
                        now <- liftIO getCurrentTime
                        r <- request
                        let validTil = addUTCTime 3600 now
-                           person = entityKey personEntity
+                           personId = entityKey personEntity
                            salt = personSalt $ entityVal personEntity
                            hash = personPassword $ entityVal personEntity
                            ip =  T.pack $ getIP4 $ remoteHost r
 
                        if hash == (makeHex $ hashPassword p (decodeHex $ salt))
-                       then do sid <- runDB $ insert (Sessie validTil person ip)
+                       then do sid <- runDB $ do deleteWhere [ SessiePersonId ==. personId ]
+                                                 insert (Sessie validTil personId ip)
                                liftIO $ print sid
                                writeSession (Just sid)
                                simpleText ("Login succesful.")
@@ -221,7 +222,7 @@ getUserFromSession sid = do
       Nothing -> simpleText ("Invalid session")
 
 killSessions :: PersonId -> PidgeonAction ()
-killSessions pId = runDB $ deleteWhere [ SessiePersonId ==. pId ]
+killSessions personId = runDB $ deleteWhere [ SessiePersonId ==. personId ]
 
 ---------------------- Lucid stuff -----------------------
 -- TODO: move out of Main.hs
