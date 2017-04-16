@@ -92,6 +92,7 @@ getConnString p = B.pack $ concat [ "host=", (dbHost p)
                                   , " port=", show (dbPort p)
                                   ]
 
+-- TODO: Move out of Main.hs
 getIP4 :: SockAddr -> String
 getIP4 ipport = let s = show ipport
                in takeWhile (/= ':') s
@@ -168,7 +169,6 @@ app =  do
           Just e -> case password of
             Just p -> do
                mPerson <- runDB $ getBy (UniqueUsername $ T.toLower e)
-               mPass <- runDB $ getBy (UniqueUsername p)
                case mPerson of
                    Just personEntity -> do
                        liftIO $ print personEntity
