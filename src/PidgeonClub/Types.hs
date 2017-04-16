@@ -28,6 +28,7 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
   Sessie
     validUntil UTCTime
     personId PersonId
+    ipaddress T.Text
     deriving Show
   Person
     email T.Text

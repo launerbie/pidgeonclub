@@ -38,7 +38,9 @@ import Database.Persist.Sql hiding (get)
 import qualified Database.Persist.Sql as PSQL
 import Database.Persist.TH
 import Lucid
+import Network.Socket
 import Network.Wai.Middleware.Static (staticPolicy, addBase)
+import Network.Wai
 
 ------ Spock ----------
 import Web.Spock ( get, getpost, post, getState, HasSpock, html, lazyBytes, middleware
@@ -90,13 +92,16 @@ getConnString p = B.pack $ concat [ "host=", (dbHost p)
                                   , " port=", show (dbPort p)
                                   ]
 
+getIP4 :: SockAddr -> String
+getIP4 ipport = let s = show ipport
+               in takeWhile (/= ':') s
+
 app :: PidgeonApp () ()
 app =  do
     middleware (staticPolicy (addBase "static"))
 
     get "/" $ do
         showRequest
-        r <- request
         lucid homePage
 
     get "/signup" $ do
@@ -168,13 +173,15 @@ app =  do
                    Just personEntity -> do
                        liftIO $ print personEntity
                        now <- liftIO getCurrentTime
+                       r <- request
                        let validTil = addUTCTime 3600 now
                            person = entityKey personEntity
                            salt = personSalt $ entityVal personEntity
                            hash = personPassword $ entityVal personEntity
+                           ip =  T.pack $ getIP4 $ remoteHost r
 
                        if hash == (makeHex $ hashPassword p (decodeHex $ salt))
-                       then do sid <- runDB $ insert (Sessie validTil person)
+                       then do sid <- runDB $ insert (Sessie validTil person ip)
                                liftIO $ print sid
                                writeSession (Just sid)
                                simpleText ("Login succesful.")
