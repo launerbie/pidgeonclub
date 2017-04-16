@@ -167,9 +167,6 @@ app =  do
                     Just u -> lucid $ loginPage (Just u)
                     Nothing -> simpleText "user doesn't exist anymore"
 
-    --TODO: if already logged in, let the user know and
-    -- offer to log out.
-
     post "/login" $ do
         showRequest
         email <- param "email"
@@ -229,7 +226,9 @@ getUserFromSession sid = do
           if sessieValidUntil sess > now
             then return $ Just (sessiePersonId sess)
             else simpleText ("Session has expired")
-      Nothing -> simpleText ("Invalid session")
+      Nothing -> do
+          writeSession Nothing
+          simpleText ("Invalid session")
 
 killSessions :: PersonId -> PidgeonAction ()
 killSessions personId = runDB $ deleteWhere [ SessiePersonId ==. personId ]

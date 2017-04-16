@@ -94,6 +94,9 @@ alreadyLoggedInPage :: Person -> Html ()
 alreadyLoggedInPage p = do
   div_ [class_ "container"] $ do
       (p_ $ toHtml $ "Already logged in as: " <> personEmail p)
+      (p_ $ toHtml $ "Would you like to log out?")
+      a_ [class_ "btn btn-default", href_ "/logout", role_ "button"] "logout"
+
 
 loginPage :: Maybe Person -> Html ()
 loginPage (Just p) = basePage Login (alreadyLoggedInPage p)
