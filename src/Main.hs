@@ -104,10 +104,17 @@ app =  do
     middleware (staticPolicy (addBase "static"))
 
     get "/" $ do
-        lucid homePage
+        r <- readSession
+        case r of
+            Just sess -> lucid $ homePage LoggedIn
+            Nothing -> lucid $ homePage LoggedOut
 
     get "/signup" $ do
-        lucid (signupPage Nothing)
+        r <- readSession
+        case r of
+            Just sess -> lucid (signupPage Nothing LoggedIn)
+            Nothing -> lucid (signupPage Nothing LoggedOut)
+
 
     post "/signup" $ do
         mEmail <- param "email"
@@ -144,28 +151,28 @@ app =  do
     get "/allusers" $ do
         users <- runDB $ selectList [] [Asc PersonEmail] -- [Entity record]
         lucid $ allUsersPage (map (\u -> let e = entityVal u
-                                         in (personEmail e, personPassword e,personSalt e )) users)
+                                         in (personEmail e, personPassword e,personSalt e )) users) LoggedOut
 
     -- The user's public page
     -- Display some publicly available information on the user on this page
-    get ("/user" <//> var) $ \user -> (lucid $ userPage user)
+    get ("/user" <//> var) $ \user -> (lucid $ userPage user LoggedOut )
 
     -- The user's settings page
     get "/profile" $ requireUser $ \u -> do
         liftIO $ pPrint u
         mPerson <- runDB $ PSQL.get u
         case mPerson of
-            Just p -> lucid $ profilePage p
+            Just p -> lucid $ profilePage p LoggedIn
             Nothing -> simpleText "user doesn't exist anymore"
 
     get "/login" $ do
         r <- readSession
         case r of
-            Nothing -> lucid $ loginPage Nothing
+            Nothing -> lucid $ loginPage Nothing LoggedOut
             Just sess -> requireUser $ \u -> do
                 mPerson <- runDB $ PSQL.get u
                 case mPerson of
-                    Just u -> lucid $ loginPage (Just u)
+                    Just u -> lucid $ loginPage (Just u) LoggedIn
                     Nothing -> simpleText "user doesn't exist anymore"
 
     post "/login" $ do
@@ -192,7 +199,7 @@ app =  do
                                liftIO $ pPrint sid
                                liftIO $ pPrint personId
                                writeSession (Just sid)
-                               simpleText ("Login succesful.")
+                               redirect "/"
                        else simpleText ("Invalid email or password")
                    Nothing -> simpleText ("Invalid email or password")
             Nothing -> simpleText ("oops, password param missing from form")
@@ -239,7 +246,7 @@ lucid :: MonadIO m => Html a1 -> ActionCtxT ctx m a
 lucid = lazyBytes . renderBS
 
 simpleText :: MonadIO m => T.Text -> ActionCtxT ctx m a
-simpleText x = lucid (simplePage x)
+simpleText x = lucid (simplePage x LoggedOut)
 ---------------------- Persistent ------------------------
 -- TODO: move out of Main.hs
 runDB :: (HasSpock m, SpockConn m ~ SqlBackend) =>

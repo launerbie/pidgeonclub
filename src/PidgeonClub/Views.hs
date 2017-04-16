@@ -11,9 +11,6 @@ import Lucid.Base (makeAttribute)
 import PidgeonClub.Types
 import PidgeonClub.Lorem
 
--- TODO: Login dependent menu, i.e. if not logged in, don't show the profile url in nav
--- if logged in, show logout button.
-
 data Page = Home
           | Profile
           | Login
@@ -21,25 +18,23 @@ data Page = Home
           | Signup
           deriving (Eq, Show)
 
-data View = View { activeOnNav :: Page
-                 , loggedIn :: Bool
-                 }
+data LogStatus = LoggedIn | LoggedOut deriving Show
 
-basePage :: Page -> Html () -> Html ()
-basePage p content=
+basePage :: Page -> LogStatus -> Html () -> Html ()
+basePage p s content=
   html_ [lang_ "en"] $ do
       head_ $ do
           title_ (toHtml $ (show p)++" | Pidgeon Club")
           meta_ [name_ "viewport", content_ "width=device-width, initial-scale=1"]
           link_ [rel_ "stylesheet",type_ "text/css",href_ "/css/bootstrap.min.css"]
       body_ $ do
-          navigation p
+          navigation p s
           content
           footer
           scripts
 
-navigation :: Page -> Html ()
-navigation p = do
+navigation :: Page -> LogStatus -> Html ()
+navigation p s = do
   nav_ [class_ "navbar navbar-inverse"] $ do
      div_ [class_ "container"] $ do
         div_ [class_ "navbar-header"] $ do
@@ -54,21 +49,33 @@ navigation p = do
              case p of
                  Home   -> li_ [class_ "active"] (a_ [href_ "/"] "Home")
                  _      -> li_ (a_ [href_ "/"] "Home")
-             case p of
-                 Profile  -> li_ [class_ "active"] (a_ [href_ "/profile"] "Profile")
-                 _      -> li_ (a_ [href_ "/profile"] "Profile")
-             case p of
-                 Signup -> li_ [class_ "active"] (a_ [href_ "/signup"] "Sign Up")
-                 _      -> li_ (a_ [href_ "/signup"]  "Sign Up")
-             case p of
-                 Login  -> li_ [class_ "active"] (a_ [href_ "/login"] "Login")
-                 _      -> li_ (a_ [href_ "/login"]   "Login")
-             case p of
-                 Logout  -> li_ [class_ "active"] (a_ [href_ "/logout"] "Logout")
-                 _      -> li_ (a_ [href_ "/logout"]   "Logout")
+             case s of
+               LoggedOut -> mempty
+               LoggedIn ->
+                 case p of
+                     Profile  -> li_ [class_ "active"] (a_ [href_ "/profile"] "Profile")
+                     _      -> li_ (a_ [href_ "/profile"] "Profile")
+             case s of
+               LoggedOut ->
+                 case p of
+                     Signup -> li_ [class_ "active"] (a_ [href_ "/signup"] "Sign Up")
+                     _      -> li_ (a_ [href_ "/signup"]  "Sign Up")
+               LoggedIn -> mempty
+             case s of
+               LoggedOut ->
+                 case p of
+                     Login  -> li_ [class_ "active"] (a_ [href_ "/login"] "Login")
+                     _      -> li_ (a_ [href_ "/login"]   "Login")
+               LoggedIn -> mempty
+             case s of
+               LoggedOut -> mempty
+               LoggedIn ->
+                 case p of
+                     Logout  -> li_ [class_ "active"] (a_ [href_ "/logout"] "Logout")
+                     _      -> li_ (a_ [href_ "/logout"]   "Logout")
 
-homePage :: Html ()
-homePage = basePage Home $ do
+homePage :: LogStatus -> Html ()
+homePage s = basePage Home s $ do
   div_ [class_ "container"] $ do
       (h1_ "Lorem Ipsum")
       (p_ $ toHtml lorem1)
@@ -85,8 +92,8 @@ homePage = basePage Home $ do
       (h1_ "Pidgem Pidgus")
       (p_ $ toHtml lorem5)
 
-simplePage :: T.Text -> Html ()
-simplePage x = basePage Home $ do
+simplePage :: T.Text -> LogStatus -> Html ()
+simplePage x s = basePage Home s $ do
   div_ [class_ "container"] $ do
       (p_ $ toHtml x)
 
@@ -98,22 +105,22 @@ alreadyLoggedInPage p = do
       a_ [class_ "btn btn-default", href_ "/logout", role_ "button"] "logout"
 
 
-loginPage :: Maybe Person -> Html ()
-loginPage (Just p) = basePage Login (alreadyLoggedInPage p)
-loginPage Nothing = basePage Login suchHorizontalLoginForm
+loginPage :: Maybe Person -> LogStatus -> Html ()
+loginPage (Just p) s = basePage Login s (alreadyLoggedInPage p)
+loginPage Nothing s = basePage Login s suchHorizontalLoginForm
 
-signupPage :: Maybe SignupError -> Html ()
-signupPage e = basePage Signup (signupForm e)
+signupPage :: Maybe SignupError -> LogStatus -> Html ()
+signupPage e s = basePage Signup s (signupForm e)
 
-profilePage :: Person -> Html ()
-profilePage p = basePage Profile $ do
+profilePage :: Person -> LogStatus -> Html ()
+profilePage p s = basePage Profile s $ do
   div_ [class_ "container"] $ do
      p_ $ toHtml $ personEmail p
      p_ $ toHtml $ personPassword p
      p_ $ toHtml $ personSalt p
 
-userPage :: String -> Html ()
-userPage email = basePage Profile $ do
+userPage :: String -> LogStatus -> Html ()
+userPage email s = basePage Profile s $ do
   div_ [class_ "container"] $ do
      p_ $ toHtml email
 
@@ -128,8 +135,8 @@ cellspacing_ = makeAttribute "cellspacing"
 cellpadding_ :: T.Text -> Attribute
 cellpadding_ = makeAttribute "cellpadding_"
 
-allUsersPage :: [(T.Text, T.Text, T.Text)] -> Html ()
-allUsersPage xs = basePage Home $ do
+allUsersPage :: [(T.Text, T.Text, T.Text)] -> LogStatus -> Html ()
+allUsersPage xs s = basePage Home s $ do
   div_ [class_ "container"] $ do
      table_ [class_ "table table-bordered"] $ do
           tr_ $ do
