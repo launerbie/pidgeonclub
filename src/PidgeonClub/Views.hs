@@ -3,6 +3,7 @@
 {-# LANGUAGE ExtendedDefaultRules #-}
 module PidgeonClub.Views where
 
+import Data.Monoid ((<>))
 import qualified Data.Text as T
 import Lucid
 import Lucid.Base (makeAttribute)
@@ -89,8 +90,14 @@ simplePage x = basePage Home $ do
   div_ [class_ "container"] $ do
       (p_ $ toHtml x)
 
-loginPage :: Html ()
-loginPage = basePage Login suchHorizontalLoginForm
+alreadyLoggedInPage :: Person -> Html ()
+alreadyLoggedInPage p = do
+  div_ [class_ "container"] $ do
+      (p_ $ toHtml $ "Already logged in as: " <> personEmail p)
+
+loginPage :: Maybe Person -> Html ()
+loginPage (Just p) = basePage Login (alreadyLoggedInPage p)
+loginPage Nothing = basePage Login suchHorizontalLoginForm
 
 signupPage :: Maybe SignupError -> Html ()
 signupPage e = basePage Signup (signupForm e)

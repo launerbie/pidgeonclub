@@ -157,7 +157,16 @@ app =  do
             Just p -> lucid $ profilePage p
             Nothing -> simpleText "user doesn't exist anymore"
 
-    get "/login" $ lucid loginPage
+    get "/login" $ do
+        r <- readSession
+        case r of
+            Nothing -> lucid $ loginPage Nothing
+            Just sess -> requireUser $ \u -> do
+                mPerson <- runDB $ PSQL.get u
+                case mPerson of
+                    Just u -> lucid $ loginPage (Just u)
+                    Nothing -> simpleText "user doesn't exist anymore"
+
     --TODO: if already logged in, let the user know and
     -- offer to log out.
 
@@ -184,6 +193,7 @@ app =  do
                        then do sid <- runDB $ do deleteWhere [ SessiePersonId ==. personId ]
                                                  insert (Sessie validTil personId ip)
                                liftIO $ print sid
+                               liftIO $ print personId
                                writeSession (Just sid)
                                simpleText ("Login succesful.")
                        else simpleText ("Invalid email or password")
