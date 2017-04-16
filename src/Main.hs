@@ -42,6 +42,8 @@ import Network.Socket
 import Network.Wai.Middleware.Static (staticPolicy, addBase)
 import Network.Wai
 
+import Text.Pretty.Simple (pPrint)
+
 ------ Spock ----------
 import Web.Spock ( get, getpost, post, getState, HasSpock, html, lazyBytes, middleware
                  , redirect, runSpock, spock, SpockM, SpockCtxM, SpockConn, ActionCtxT
@@ -102,7 +104,6 @@ app =  do
     middleware (staticPolicy (addBase "static"))
 
     get "/" $ do
-        showRequest
         lucid homePage
 
     get "/signup" $ do
@@ -151,7 +152,7 @@ app =  do
 
     -- The user's settings page
     get "/profile" $ requireUser $ \u -> do
-        liftIO $ print u
+        liftIO $ pPrint u
         mPerson <- runDB $ PSQL.get u
         case mPerson of
             Just p -> lucid $ profilePage p
@@ -168,7 +169,6 @@ app =  do
                     Nothing -> simpleText "user doesn't exist anymore"
 
     post "/login" $ do
-        showRequest
         email <- param "email"
         password <- param "password"
         case email of
@@ -177,7 +177,7 @@ app =  do
                mPerson <- runDB $ getBy (UniqueUsername $ T.toLower e)
                case mPerson of
                    Just personEntity -> do
-                       liftIO $ print personEntity
+                       liftIO $ pPrint personEntity
                        now <- liftIO getCurrentTime
                        r <- request
                        let validTil = addUTCTime 3600 now
@@ -189,8 +189,8 @@ app =  do
                        if hash == (makeHex $ hashPassword p (decodeHex $ salt))
                        then do sid <- runDB $ do deleteWhere [ SessiePersonId ==. personId ]
                                                  insert (Sessie validTil personId ip)
-                               liftIO $ print sid
-                               liftIO $ print personId
+                               liftIO $ pPrint sid
+                               liftIO $ pPrint personId
                                writeSession (Just sid)
                                simpleText ("Login succesful.")
                        else simpleText ("Invalid email or password")
@@ -218,10 +218,10 @@ requireUser action = do
 getUserFromSession :: SessieId -> PidgeonAction (Maybe PersonId)
 getUserFromSession sid = do
   mSid <- runDB $ PSQL.get sid -- :: Maybe Sessie
-  liftIO $ print mSid
+  liftIO $ pPrint mSid
   case mSid of
       Just sess -> do
-          liftIO $ print sess
+          liftIO $ pPrint sess
           now <- liftIO getCurrentTime
           if sessieValidUntil sess > now
             then return $ Just (sessiePersonId sess)
