@@ -11,30 +11,43 @@ import Lucid.Base (makeAttribute)
 import PidgeonClub.Types
 import PidgeonClub.Lorem
 
-data Page = Home
-          | Profile
-          | Login
-          | Logout
-          | Signup
-          deriving (Eq, Show)
+data LogStatus = LoggedOut | LoggedIn deriving (Eq,Show)
 
-data LogStatus = LoggedIn | LoggedOut deriving Show
+data NavEntry = NavEntry
+  { navHref :: T.Text
+  , navText :: T.Text
+  } deriving (Eq, Show)
 
-basePage :: Page -> LogStatus -> Html () -> Html ()
-basePage p s content=
+homeNav = NavEntry "Home" "/home"
+loginNav = NavEntry "Login" "/login"
+logoutNav = NavEntry "Logout" "/logout"
+profileNav = NavEntry "Profile" "/profile"
+signupNav = NavEntry "Signup" "/signup"
+
+data NavMenu = NavMenu [NavEntry] NavEntry deriving Show
+
+defaultNavMenu :: NavEntry -> NavMenu
+defaultNavMenu active = NavMenu [homeNav, signupNav, loginNav] active
+
+userNavMenu :: NavEntry -> NavMenu
+userNavMenu active = NavMenu [homeNav, profileNav, logoutNav] active
+
+--basePage :: Page -> LogStatus -> Html () -> Html ()
+basePage :: NavMenu -> Html () -> Html ()
+basePage nm@(NavMenu xs active) content=
   html_ [lang_ "en"] $ do
       head_ $ do
-          title_ (toHtml $ (show p)++" | Pidgeon Club")
+          title_ (toHtml $ (navText active) <> " | Pidgeon Club")
           meta_ [name_ "viewport", content_ "width=device-width, initial-scale=1"]
           link_ [rel_ "stylesheet",type_ "text/css",href_ "/css/bootstrap.min.css"]
       body_ $ do
-          navigation p s
+          navigation nm
           content
           footer
           scripts
 
-navigation :: Page -> LogStatus -> Html ()
-navigation p s = do
+navigation :: NavMenu -> Html ()
+navigation nm@(NavMenu xs active) = do
   nav_ [class_ "navbar navbar-inverse"] $ do
      div_ [class_ "container"] $ do
         div_ [class_ "navbar-header"] $ do
@@ -46,6 +59,16 @@ navigation p s = do
            a_ [class_ "navbar-brand"] "Pidgeon Club"
         div_ [class_ "collapse navbar-collapse", id_ "navbar"] $ do
            ul_ [class_ "nav navbar-nav"] $ do
+             mempty
+             --mapM_ (\x -> getNav x active) xs
+
+--getNav :: NavEntry -> NavEntry -> Html ()
+--getNav e a = if e == a
+--             then li_ [class_ "active"]  (a_ [href_ (navHref e)] (navText e))
+--             else li_ (a_ [href_ (navHref e)] (navText e))
+
+
+{--
              case p of
                  Home   -> li_ [class_ "active"] (a_ [href_ "/"] "Home")
                  _      -> li_ (a_ [href_ "/"] "Home")
@@ -73,9 +96,10 @@ navigation p s = do
                  case p of
                      Logout  -> li_ [class_ "active"] (a_ [href_ "/logout"] "Logout")
                      _      -> li_ (a_ [href_ "/logout"]   "Logout")
+--}
 
 homePage :: LogStatus -> Html ()
-homePage s = basePage Home s $ do
+homePage s = basePage (if s == LoggedIn then userNavMenu homeNav else defaultNavMenu homeNav) $ do
   div_ [class_ "container"] $ do
       (h1_ "Lorem Ipsum")
       (p_ $ toHtml lorem1)
@@ -93,7 +117,7 @@ homePage s = basePage Home s $ do
       (p_ $ toHtml lorem5)
 
 simplePage :: T.Text -> LogStatus -> Html ()
-simplePage x s = basePage Home s $ do
+simplePage x s = basePage (if s == LoggedIn then userNavMenu homeNav else defaultNavMenu homeNav) $ do
   div_ [class_ "container"] $ do
       (p_ $ toHtml x)
 
@@ -106,21 +130,21 @@ alreadyLoggedInPage p = do
 
 
 loginPage :: Maybe Person -> LogStatus -> Html ()
-loginPage (Just p) s = basePage Login s (alreadyLoggedInPage p)
-loginPage Nothing s = basePage Login s suchHorizontalLoginForm
+loginPage (Just p) s = basePage (if s == LoggedIn then userNavMenu loginNav else defaultNavMenu loginNav) (alreadyLoggedInPage p)
+loginPage Nothing s = basePage (if s == LoggedIn then userNavMenu loginNav else defaultNavMenu loginNav) suchHorizontalLoginForm
 
 signupPage :: Maybe SignupError -> LogStatus -> Html ()
-signupPage e s = basePage Signup s (signupForm e)
+signupPage e s = basePage (if s == LoggedIn then userNavMenu signupNav else defaultNavMenu signupNav) (signupForm e)
 
 profilePage :: Person -> LogStatus -> Html ()
-profilePage p s = basePage Profile s $ do
+profilePage p s = basePage (if s == LoggedIn then userNavMenu profileNav else defaultNavMenu profileNav) $ do
   div_ [class_ "container"] $ do
      p_ $ toHtml $ personEmail p
      p_ $ toHtml $ personPassword p
      p_ $ toHtml $ personSalt p
 
 userPage :: String -> LogStatus -> Html ()
-userPage email s = basePage Profile s $ do
+userPage email s = basePage (if s == LoggedIn then userNavMenu profileNav else defaultNavMenu profileNav) $ do
   div_ [class_ "container"] $ do
      p_ $ toHtml email
 
@@ -136,7 +160,7 @@ cellpadding_ :: T.Text -> Attribute
 cellpadding_ = makeAttribute "cellpadding_"
 
 allUsersPage :: [(T.Text, T.Text, T.Text)] -> LogStatus -> Html ()
-allUsersPage xs s = basePage Home s $ do
+allUsersPage xs s = basePage (if s == LoggedIn then userNavMenu homeNav else defaultNavMenu homeNav) $ do
   div_ [class_ "container"] $ do
      table_ [class_ "table table-bordered"] $ do
           tr_ $ do
