@@ -32,7 +32,12 @@ defaultNavMenu active = NavMenu [homeNav, signupNav, loginNav] active
 userNavMenu :: NavEntry -> NavMenu
 userNavMenu active = NavMenu [homeNav, profileNav, logoutNav] active
 
---basePage :: Page -> LogStatus -> Html () -> Html ()
+getNavMenu :: LogStatus -> NavEntry -> NavMenu
+getNavMenu s e = if s == LoggedIn
+                 then userNavMenu e
+                 else defaultNavMenu e
+
+-- ################ Common for all pages #######################
 basePage :: NavMenu -> Html () -> Html ()
 basePage nm@(NavMenu xs active) content=
   html_ [lang_ "en"] $ do
@@ -66,11 +71,8 @@ navigation (NavMenu xs active) = do
                      then li_ [class_ "active"] (a_ [href_ (navHref e)] (toHtml $ navText e))
                      else li_ (a_ [href_ (navHref e)] (toHtml $ navText e))
 
-getNavMenu :: LogStatus -> NavEntry -> NavMenu
-getNavMenu s e = if s == LoggedIn
-                 then userNavMenu e
-                 else defaultNavMenu e
 
+--  ################## Pages #####################################
 homePage :: LogStatus -> Html ()
 homePage s = basePage (getNavMenu s homeNav) $ do
   div_ [class_ "container"] $ do
@@ -121,17 +123,6 @@ userPage email s = basePage (getNavMenu s profileNav) $ do
   div_ [class_ "container"] $ do
      p_ $ toHtml email
 
--- ### Additional Attributes
--- border: A table attribute
-border_ :: T.Text -> Attribute
-border_ = makeAttribute "border"
-
-cellspacing_ :: T.Text -> Attribute
-cellspacing_ = makeAttribute "cellspacing"
-
-cellpadding_ :: T.Text -> Attribute
-cellpadding_ = makeAttribute "cellpadding_"
-
 allUsersPage :: [(T.Text, T.Text, T.Text)] -> LogStatus -> Html ()
 allUsersPage xs s = basePage (getNavMenu s homeNav) $ do
   div_ [class_ "container"] $ do
@@ -152,6 +143,7 @@ makeRow3 (a,b,c) = tr_ $ do
 emptyDiv :: String -> Html ()
 emptyDiv t = div_ [class_ "container"] (p_ $ toHtml t)
 
+-- ######################## Forms #################################
 signupForm :: Maybe SignupError -> Html ()
 signupForm mErr = do
   div_ [class_ "container"] $ do
@@ -220,4 +212,15 @@ alert [] = mempty
 alert xs = div_ [class_ "alert alert-danger alert-dismissable"] $ do
               ul_ $ do
                 mapM_ (li_ . toHtml) xs
+
+-- ### Additional Attributes
+-- border: A table attribute
+border_ :: T.Text -> Attribute
+border_ = makeAttribute "border"
+
+cellspacing_ :: T.Text -> Attribute
+cellspacing_ = makeAttribute "cellspacing"
+
+cellpadding_ :: T.Text -> Attribute
+cellpadding_ = makeAttribute "cellpadding_"
 
