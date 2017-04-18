@@ -18,11 +18,11 @@ data NavEntry = NavEntry
   , navText :: T.Text
   } deriving (Eq, Show)
 
-homeNav = NavEntry "Home" "/home"
-loginNav = NavEntry "Login" "/login"
-logoutNav = NavEntry "Logout" "/logout"
-profileNav = NavEntry "Profile" "/profile"
-signupNav = NavEntry "Signup" "/signup"
+homeNav    = NavEntry "/" "Home"
+loginNav   = NavEntry "/login" "Login"
+logoutNav  = NavEntry "/logout" "Logout"
+profileNav = NavEntry "/profile" "Profile"
+signupNav  = NavEntry "/signup" "Signup"
 
 data NavMenu = NavMenu [NavEntry] NavEntry deriving Show
 
@@ -47,7 +47,7 @@ basePage nm@(NavMenu xs active) content=
           scripts
 
 navigation :: NavMenu -> Html ()
-navigation nm@(NavMenu xs active) = do
+navigation (NavMenu xs active) = do
   nav_ [class_ "navbar navbar-inverse"] $ do
      div_ [class_ "container"] $ do
         div_ [class_ "navbar-header"] $ do
@@ -59,44 +59,12 @@ navigation nm@(NavMenu xs active) = do
            a_ [class_ "navbar-brand"] "Pidgeon Club"
         div_ [class_ "collapse navbar-collapse", id_ "navbar"] $ do
            ul_ [class_ "nav navbar-nav"] $ do
-             mempty
-             --mapM_ (\x -> getNav x active) xs
-
---getNav :: NavEntry -> NavEntry -> Html ()
---getNav e a = if e == a
---             then li_ [class_ "active"]  (a_ [href_ (navHref e)] (navText e))
---             else li_ (a_ [href_ (navHref e)] (navText e))
-
-
-{--
-             case p of
-                 Home   -> li_ [class_ "active"] (a_ [href_ "/"] "Home")
-                 _      -> li_ (a_ [href_ "/"] "Home")
-             case s of
-               LoggedOut -> mempty
-               LoggedIn ->
-                 case p of
-                     Profile  -> li_ [class_ "active"] (a_ [href_ "/profile"] "Profile")
-                     _      -> li_ (a_ [href_ "/profile"] "Profile")
-             case s of
-               LoggedOut ->
-                 case p of
-                     Signup -> li_ [class_ "active"] (a_ [href_ "/signup"] "Sign Up")
-                     _      -> li_ (a_ [href_ "/signup"]  "Sign Up")
-               LoggedIn -> mempty
-             case s of
-               LoggedOut ->
-                 case p of
-                     Login  -> li_ [class_ "active"] (a_ [href_ "/login"] "Login")
-                     _      -> li_ (a_ [href_ "/login"]   "Login")
-               LoggedIn -> mempty
-             case s of
-               LoggedOut -> mempty
-               LoggedIn ->
-                 case p of
-                     Logout  -> li_ [class_ "active"] (a_ [href_ "/logout"] "Logout")
-                     _      -> li_ (a_ [href_ "/logout"]   "Logout")
---}
+             mapM_ (\x -> createNavEntry x active) xs
+             where createNavEntry :: NavEntry -> NavEntry -> Html ()
+                   createNavEntry e a =
+                     if e == a
+                     then li_ [class_ "active"] (a_ [href_ (navHref e)] (toHtml $ navText e))
+                     else li_ (a_ [href_ (navHref e)] (toHtml $ navText e))
 
 homePage :: LogStatus -> Html ()
 homePage s = basePage (if s == LoggedIn then userNavMenu homeNav else defaultNavMenu homeNav) $ do
