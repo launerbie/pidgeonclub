@@ -147,8 +147,7 @@ app =  do
     -- actually want to check all params and return errors on all params.
 
     -- TODO: Make accessible only for admins
-    -- TODO: For now, just add requireUser
-    get "/allusers" $ do
+    get "/allusers" $ requireUser $ \_ -> do
         users <- runDB $ selectList [] [Asc PersonEmail] -- [Entity record]
         lucid $ allUsersPage (map (\u -> let e = entityVal u
                                          in (personEmail e, personPassword e,personSalt e )) users) LoggedOut
