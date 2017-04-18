@@ -211,6 +211,10 @@ app =  do
         writeSession Nothing
         redirect "/"
 
+    get "/reset" $ do
+        -- TODO: reset password form
+        simpleText "Reset password form"
+
 requireUser :: (Key Person -> PidgeonAction a) -> PidgeonAction a
 requireUser action = do
   mSessid <- readSession

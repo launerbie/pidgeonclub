@@ -147,8 +147,6 @@ emptyDiv t = div_ [class_ "container"] (p_ $ toHtml t)
 signupForm :: Maybe SignupError -> Html ()
 signupForm mErr = do
   div_ [class_ "container"] $ do
-     (p_ "Become a pidgeon!")
-  div_ [class_ "container"] $ do
      form_ [class_ "form-horizontal", method_ "post", action_ "/signup"] $ do
          div_ [class_ "form-group"] $ do
             label_ [for_ "email", class_ "col-sm-2 control-label"] "email: "
@@ -177,6 +175,8 @@ signupForm mErr = do
          div_ [class_ "form-group"] $ do
             div_ [class_ "col-sm-offset-2 col-sm-4"] $ do
                button_ [type_ "submit", class_ "btn btn-default"] "Register"
+  div_ [class_ "container"] $ do
+     a_ [href_ "/reset" ] "Forgot your password?"
 
 suchHorizontalLoginForm :: Html ()
 suchHorizontalLoginForm = do
@@ -193,6 +193,9 @@ suchHorizontalLoginForm = do
          div_ [class_ "form-group"] $ do
             div_ [class_ "col-sm-offset-2 col-sm-4"] $ do
                button_ [type_ "submit", class_ "btn btn-default"] "Sign in"
+  div_ [class_ "container"] $ do
+     p_ $ do "Don't have an account? "
+             a_ [href_ "/signup" ] "Become a pidgeon!"
 
 footer :: Html ()
 footer = do
