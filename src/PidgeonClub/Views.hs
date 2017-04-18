@@ -66,8 +66,13 @@ navigation (NavMenu xs active) = do
                      then li_ [class_ "active"] (a_ [href_ (navHref e)] (toHtml $ navText e))
                      else li_ (a_ [href_ (navHref e)] (toHtml $ navText e))
 
+getNavMenu :: LogStatus -> NavEntry -> NavMenu
+getNavMenu s e = if s == LoggedIn
+                 then userNavMenu e
+                 else defaultNavMenu e
+
 homePage :: LogStatus -> Html ()
-homePage s = basePage (if s == LoggedIn then userNavMenu homeNav else defaultNavMenu homeNav) $ do
+homePage s = basePage (getNavMenu s homeNav) $ do
   div_ [class_ "container"] $ do
       (h1_ "Lorem Ipsum")
       (p_ $ toHtml lorem1)
@@ -85,7 +90,7 @@ homePage s = basePage (if s == LoggedIn then userNavMenu homeNav else defaultNav
       (p_ $ toHtml lorem5)
 
 simplePage :: T.Text -> LogStatus -> Html ()
-simplePage x s = basePage (if s == LoggedIn then userNavMenu homeNav else defaultNavMenu homeNav) $ do
+simplePage x s = basePage (getNavMenu s homeNav) $ do
   div_ [class_ "container"] $ do
       (p_ $ toHtml x)
 
@@ -98,21 +103,21 @@ alreadyLoggedInPage p = do
 
 
 loginPage :: Maybe Person -> LogStatus -> Html ()
-loginPage (Just p) s = basePage (if s == LoggedIn then userNavMenu loginNav else defaultNavMenu loginNav) (alreadyLoggedInPage p)
-loginPage Nothing s = basePage (if s == LoggedIn then userNavMenu loginNav else defaultNavMenu loginNav) suchHorizontalLoginForm
+loginPage (Just p) s = basePage (getNavMenu s loginNav) (alreadyLoggedInPage p)
+loginPage Nothing s = basePage (getNavMenu s loginNav) suchHorizontalLoginForm
 
 signupPage :: Maybe SignupError -> LogStatus -> Html ()
-signupPage e s = basePage (if s == LoggedIn then userNavMenu signupNav else defaultNavMenu signupNav) (signupForm e)
+signupPage e s = basePage (getNavMenu s signupNav) (signupForm e)
 
 profilePage :: Person -> LogStatus -> Html ()
-profilePage p s = basePage (if s == LoggedIn then userNavMenu profileNav else defaultNavMenu profileNav) $ do
+profilePage p s = basePage (getNavMenu s profileNav) $ do
   div_ [class_ "container"] $ do
      p_ $ toHtml $ personEmail p
      p_ $ toHtml $ personPassword p
      p_ $ toHtml $ personSalt p
 
 userPage :: String -> LogStatus -> Html ()
-userPage email s = basePage (if s == LoggedIn then userNavMenu profileNav else defaultNavMenu profileNav) $ do
+userPage email s = basePage (getNavMenu s profileNav) $ do
   div_ [class_ "container"] $ do
      p_ $ toHtml email
 
@@ -128,7 +133,7 @@ cellpadding_ :: T.Text -> Attribute
 cellpadding_ = makeAttribute "cellpadding_"
 
 allUsersPage :: [(T.Text, T.Text, T.Text)] -> LogStatus -> Html ()
-allUsersPage xs s = basePage (if s == LoggedIn then userNavMenu homeNav else defaultNavMenu homeNav) $ do
+allUsersPage xs s = basePage (getNavMenu s homeNav) $ do
   div_ [class_ "container"] $ do
      table_ [class_ "table table-bordered"] $ do
           tr_ $ do
