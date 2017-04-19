@@ -15,7 +15,6 @@ import Database.Persist.TH
 import Data.Time (UTCTime, getCurrentTime, addUTCTime)
 
 
-type SignupInput = (T.Text, T.Text, T.Text)
 
 -------------------------------- Forms -------------------------------------
 data SignupError = SignupError
@@ -24,6 +23,7 @@ data SignupError = SignupError
     , passwordErrorConfirm :: [String]
     }
 
+----------------------- Database Schema ---------------------------------
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
   Sessie
     validUntil UTCTime
