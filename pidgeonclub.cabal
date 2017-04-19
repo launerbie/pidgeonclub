@@ -46,7 +46,7 @@ executable pidgeonclub
                      , wai
                      , wai-middleware-static
                      , word8
-  other-modules:       PidgeonClub.Core
+  other-modules:       PidgeonClub.Forms
                      , PidgeonClub.Views
                      , PidgeonClub.Types
                      , PidgeonClub.Actions
