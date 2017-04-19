@@ -1,50 +1,39 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
-{-# LANGUAGE EmptyDataDecls             #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE GADTs                      #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE QuasiQuotes                #-}
-{-# LANGUAGE TemplateHaskell            #-}
-{-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE TypeFamilies        #-}
 module Main where
 
 import Control.Monad        (liftM, when, unless, guard)
 import Control.Monad.Trans  (lift, MonadIO, liftIO)
 import Control.Monad.Trans.Resource  (ResourceT, runResourceT)
 import Control.Monad.Logger    (runNoLoggingT, runStderrLoggingT, NoLoggingT)
-
 import Data.Char (toLower)
 import Data.Word8 hiding (toLower)
 import qualified Data.ByteString as BS
 import qualified Crypto.Hash.SHA256 as SHA
-import System.Random
-
 import qualified Data.ByteString.Base16 as B16
-
 import qualified Data.ByteString.Char8 as B
 import qualified Data.Configurator as C
-import Data.Monoid ((<>))
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
---import Data.UnixTime (getUnixTime, toClockTime, utSeconds)
+import Data.UnixTime (getUnixTime, toClockTime, utSeconds)
 import Data.Time (UTCTime, getCurrentTime, addUTCTime)
+import Lucid
+import Network.Socket
+import Network.Wai.Middleware.Static (staticPolicy, addBase)
+import Network.Wai
+import System.Random
+import Text.Pretty.Simple (pPrint)
+
+----------------- Persistence -----------------
 import qualified Database.Persist as P
 import Database.Persist.Postgresql ( ConnectionString, createPostgresqlPool
                                    , SqlPersistT)
 import Database.Persist.Sql hiding (get)
 import qualified Database.Persist.Sql as PSQL
 import Database.Persist.TH
-import Lucid
-import Network.Socket
-import Network.Wai.Middleware.Static (staticPolicy, addBase)
-import Network.Wai
 
-import Text.Pretty.Simple (pPrint)
-
------- Spock ----------
+----------------- Spock -----------------------
 import Web.Spock ( get, post, HasSpock, lazyBytes, middleware
                  , redirect, runSpock, spock, SpockCtxM, SpockConn, ActionCtxT
                  , SpockActionCtx, root, runQuery, text, var
@@ -55,7 +44,7 @@ import Web.Spock.Config  ( defaultSpockCfg, PoolOrConn (PCNoDatabase, PCPool)
 import Web.Spock.Action  ( request, params, param, param')
 import Web.Spock.SessionActions (getSessionId, readSession, writeSession)
 
------- Pidgeon --------
+--------------- PidgeonClub ------------------
 import PidgeonClub.Views
 import PidgeonClub.Types
 
@@ -71,7 +60,6 @@ data AppState = AppState {getCfg :: PidgeonConfig}
 type AppSession = Maybe SessieId
 type PidgeonApp ctx a = SpockCtxM ctx SqlBackend AppSession AppState a
 type PidgeonAction = SpockActionCtx () SqlBackend AppSession AppState
-
 
 main :: IO ()
 main = do
@@ -105,11 +93,6 @@ getConnString p = B.pack $ concat [ "host=", (dbHost p)
                                   , " password=", (dbPass p)
                                   , " port=", show (dbPort p)
                                   ]
-
--- TODO: Move out of Main.hs
-getIP4 :: SockAddr -> String
-getIP4 ipport = let s = show ipport
-               in takeWhile (/= ':') s
 
 app :: PidgeonApp () ()
 app =  do
@@ -206,6 +189,7 @@ app =  do
 
                        if hash == (makeHex $ hashPassword p (decodeHex $ salt))
                        then do sid <- runDB $ do deleteWhere [ SessiePersonId ==. personId ]
+                                                 --TODO: save unixtime
                                                  insert (Sessie validTil personId ip)
                                liftIO $ pPrint sid
                                liftIO $ pPrint personId
@@ -261,6 +245,12 @@ showRequest = do
     p <- params
     liftIO $ do pPrint r
                 print p
+
+-- TODO: Move out of Main.hs
+getIP4 :: SockAddr -> String
+getIP4 ipport = let s = show ipport
+               in takeWhile (/= ':') s
+
 
 ---------------------- Lucid stuff -----------------------
 -- TODO: move out of Main.hs
