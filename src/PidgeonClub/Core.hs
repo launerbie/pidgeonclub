@@ -41,17 +41,3 @@ showRequest = do
                 print p
 
 
-validUsername :: T.Text -> Bool
-validUsername = T.all validChar
-
-validPassword :: T.Text -> Bool
-validPassword = (>7) . T.length
-
-validEmail :: T.Text -> Bool
-validEmail = undefined
-
-validChar :: Char -> Bool
-validChar x = x `elem` ['-', '_']++['a'..'z']++['A'..'Z']++['0'..'9']
-
-isFreeUsername = undefined
-
