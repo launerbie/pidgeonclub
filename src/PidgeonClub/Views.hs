@@ -124,15 +124,16 @@ userPage email s = basePage (getNavMenu s profileNav) $ do
   div_ [class_ "container"] $ do
      p_ $ toHtml email
 
-allUsersPage :: [(T.Text, T.Text, T.Text)] -> LogStatus -> Html ()
+allUsersPage :: [Person] -> LogStatus -> Html ()
 allUsersPage xs s = basePage (getNavMenu s homeNav) $ do
+  let personToRow = \p -> (personEmail p, personPassword p, personSalt p)
   div_ [class_ "container"] $ do
      table_ [class_ "table table-bordered"] $ do
           tr_ $ do
             th_ "Email"
             th_ "Salted SHA256"
             th_ "Salt"
-          mapM_ makeRow3 xs
+          mapM_ (makeRow3 . personToRow) xs
 
 -- Generalize to makeRow :: nrRows -> [T.Text] -> Html () ?
 makeRow3 :: (T.Text, T.Text, T.Text) -> Html ()

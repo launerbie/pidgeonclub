@@ -144,8 +144,8 @@ app =  do
     -- TODO: Make accessible only for admins
     get "/allusers" $ requireUser $ \_ -> do
         users <- runDB $ selectList [] [Asc PersonEmail] -- [Entity record]
-        lucid $ allUsersPage (map (\u -> let e = entityVal u
-                                         in (personEmail e, personPassword e,personSalt e )) users) LoggedOut
+        let persons = map entityVal users
+        lucid $ allUsersPage persons LoggedOut
 
     -- The user's public page
     -- Display some publicly available information on the user on this page
