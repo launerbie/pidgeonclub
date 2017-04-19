@@ -1,5 +1,7 @@
 module PidgeonClub.Forms where
 
+import qualified Data.Text as T
+
 -------------------------------- Forms -------------------------------------
 data SignupError = SignupError
     { usernameError :: [String]
