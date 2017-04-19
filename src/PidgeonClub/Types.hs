@@ -45,8 +45,3 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
     package PackageId
     deriving Show
 |]
-
-
-
-
-
