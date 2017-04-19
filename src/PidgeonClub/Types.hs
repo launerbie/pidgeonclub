@@ -14,15 +14,6 @@ import qualified Data.Text as T
 import Database.Persist.TH
 import Data.Time (UTCTime, getCurrentTime, addUTCTime)
 
-
-
--------------------------------- Forms -------------------------------------
-data SignupError = SignupError
-    { usernameError :: [String]
-    , passwordError :: [String]
-    , passwordErrorConfirm :: [String]
-    }
-
 ----------------------- Database Schema ---------------------------------
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
   Sessie
@@ -54,5 +45,8 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
     package PackageId
     deriving Show
 |]
+
+
+
 
 

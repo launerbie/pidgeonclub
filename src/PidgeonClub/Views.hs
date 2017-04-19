@@ -8,6 +8,7 @@ import qualified Data.Text as T
 import Lucid
 import Lucid.Base (makeAttribute)
 
+import PidgeonClub.Forms
 import PidgeonClub.Types
 import PidgeonClub.Lorem
 
