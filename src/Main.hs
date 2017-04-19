@@ -45,14 +45,14 @@ import Network.Wai
 import Text.Pretty.Simple (pPrint)
 
 ------ Spock ----------
-import Web.Spock ( get, getpost, post, getState, HasSpock, html, lazyBytes, middleware
-                 , redirect, runSpock, spock, SpockM, SpockCtxM, SpockConn, ActionCtxT
-                 , SpockActionCtx, root, RouteSpec, renderRoute, runQuery, text, var
-                 , Var, (<//>) )
+import Web.Spock ( get, post, HasSpock, lazyBytes, middleware
+                 , redirect, runSpock, spock, SpockCtxM, SpockConn, ActionCtxT
+                 , SpockActionCtx, root, runQuery, text, var
+                 , (<//>) )
 
 import Web.Spock.Config  ( defaultSpockCfg, PoolOrConn (PCNoDatabase, PCPool)
                          , SpockCfg )
-import Web.Spock.Action  ( request, body, params, param, param')
+import Web.Spock.Action  ( request, params, param, param')
 import Web.Spock.SessionActions (getSessionId, readSession, writeSession)
 
 ------ Pidgeon --------
