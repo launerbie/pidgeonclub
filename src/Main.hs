@@ -57,9 +57,21 @@ import Web.Spock.SessionActions (getSessionId, readSession, writeSession)
 
 ------ Pidgeon --------
 import PidgeonClub.Views
---import PidgeonClub.Actions
-import PidgeonClub.Core
 import PidgeonClub.Types
+
+data PidgeonConfig = PidgeonConfig
+    { dbHost :: HostName
+    , dbPort :: Int
+    , dbName :: String
+    , dbUser :: String
+    , dbPass :: String
+    } deriving (Show)
+
+data AppState = AppState {getCfg :: PidgeonConfig}
+type AppSession = Maybe SessieId
+type PidgeonApp ctx a = SpockCtxM ctx SqlBackend AppSession AppState a
+type PidgeonAction = SpockActionCtx () SqlBackend AppSession AppState
+
 
 main :: IO ()
 main = do
@@ -242,6 +254,13 @@ getUserFromSession sid = do
 
 killSessions :: PersonId -> PidgeonAction ()
 killSessions personId = runDB $ deleteWhere [ SessiePersonId ==. personId ]
+
+showRequest :: PidgeonAction ()
+showRequest = do
+    r <- request
+    p <- params
+    liftIO $ do pPrint r
+                print p
 
 ---------------------- Lucid stuff -----------------------
 -- TODO: move out of Main.hs
