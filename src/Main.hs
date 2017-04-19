@@ -145,7 +145,7 @@ app =  do
     get "/allusers" $ requireUser $ \_ -> do
         users <- runDB $ selectList [] [Asc PersonEmail] -- [Entity record]
         let persons = map entityVal users
-        lucid $ allUsersPage persons LoggedOut
+        lucid $ allUsersPage persons LoggedIn
 
     -- The user's public page
     -- Display some publicly available information on the user on this page
