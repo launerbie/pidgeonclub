@@ -9,6 +9,13 @@ data SignupError = SignupError
     , passwordErrorConfirm :: [String]
     }
 
+--data SignupRequest = SignupRequest T.Text T.Text T.Text deriving (Eq, Show)
+data SignupRequest = SignupRequest
+    { srEmail :: T.Text
+    , srPassword :: T.Text
+    , srPasswordConfirm :: T.Text
+    } deriving (Eq, Show)
+
 ------------------- Validation -----------------------------
 validUsername :: T.Text -> Bool
 validUsername = T.all validChar

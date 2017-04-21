@@ -47,6 +47,7 @@ import Web.Spock.SessionActions (getSessionId, readSession, writeSession)
 --------------- PidgeonClub ------------------
 import PidgeonClub.Views
 import PidgeonClub.Types
+import PidgeonClub.Forms
 
 data PidgeonConfig = PidgeonConfig
     { dbHost :: HostName
@@ -115,31 +116,21 @@ app =  do
         mEmail <- param "email"
         mPassword <- param "password"
         mPasswordConf <- param "passwordConfirm"
-        case mEmail of
-          Just email -> do
-            mPerson <- runDB $ getBy (UniqueUsername $ T.toLower email)
-            case mPerson of
-              Just person -> simpleText ("This user already exists")
-              Nothing ->
-                  case mPassword of
-                    Just p1 -> case mPasswordConf of
-                        Just p2 ->
-                           if p1 == p2 then do
-                               g <- liftIO $ newStdGen
-                               let salt = randomBS 16 g
-                                   hash = hashPassword p1 salt
-                                   mail = T.toLower email
-                               runDB $ insert $ Person mail (makeHex hash) (makeHex salt) Nothing
-                               liftIO $ print ("Added: "++ T.unpack mail)
-                               simpleText ("succes!")
-                           else do
-                               simpleText ("passwords don't match!")
-                        Nothing -> simpleText ("oops, passwordConfirm param missing from form")
-                    Nothing -> simpleText ("oops, password param missing from form")
-          Nothing -> simpleText ("oops, email param missing from form")
-    -- TODO:
-    -- Currently this code will short circuit on the first Nothing, but
-    -- actually want to check all params and return errors on all params.
+
+        let mSr = SignupRequest <$> mEmail <*> mPassword <*> mPasswordConf
+
+        case mSr of
+            Just (SignupRequest email pass1 pass2) -> do
+                -- TODO: either Insert user succesfully,
+                -- or output signupPage with list of validation errors
+                mPerson <- lift $ runDB $ getBy (UniqueUsername $ T.toLower email)
+                case (mPerson, pass1 == pass2) of
+                    (Nothing, False) -> simpleText "passwords don't match"
+                    (Nothing, True) -> do insertPerson email pass1
+                                          simpleText "success!"
+
+                    (Just p, _ ) -> simpleText "username taken"
+            Nothing -> text ("Oops, something went wrong with your request!")
 
     -- TODO: Make accessible only for admins
     get "/allusers" $ requireUser $ \_ -> do
@@ -238,6 +229,15 @@ getUserFromSession sid = do
 
 killSessions :: PersonId -> PidgeonAction ()
 killSessions personId = runDB $ deleteWhere [ SessiePersonId ==. personId ]
+
+insertPerson :: T.Text -> T.Text -> PidgeonAction ()
+insertPerson email pass = do
+  g <- liftIO $ newStdGen
+  let salt = randomBS 16 g
+      hash = hashPassword pass salt
+      mail = T.toLower email
+  runDB $ insert $ Person mail (makeHex hash) (makeHex salt) Nothing
+  liftIO $ print ("Added: "++ T.unpack mail)
 
 showRequest :: PidgeonAction ()
 showRequest = do
