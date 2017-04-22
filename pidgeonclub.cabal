@@ -23,6 +23,7 @@ executable pidgeonclub
                      , bytestring
                      , configurator
                      , cryptohash
+                     , email-validate
                      , http-types
                      , hvect
                      , lucid

@@ -9,6 +9,7 @@ import Control.Monad.Trans.Resource  (ResourceT, runResourceT)
 import Control.Monad.Logger    (runNoLoggingT, runStderrLoggingT, NoLoggingT)
 import Data.Char (toLower)
 import Data.Word8 hiding (toLower)
+import Data.Maybe
 import qualified Data.ByteString as BS
 import qualified Crypto.Hash.SHA256 as SHA
 import qualified Data.ByteString.Base16 as B16
@@ -121,15 +122,25 @@ app =  do
 
         case mSr of
             Just (SignupRequest email pass1 pass2) -> do
-                -- TODO: either Insert user succesfully,
-                -- or output signupPage with list of validation errors
-                mPerson <- lift $ runDB $ getBy (UniqueUsername $ T.toLower email)
-                case (mPerson, pass1 == pass2) of
-                    (Nothing, False) -> simpleText "passwords don't match"
-                    (Nothing, True) -> do insertPerson email pass1
-                                          simpleText "success!"
+                mPerson <- runDB $ getBy (UniqueUsername $ T.toLower email)
 
-                    (Just p, _ ) -> simpleText "username taken"
+                let passwordsMatch = if pass1 == pass2
+                                     then Nothing
+                                     else Just "passwords do not match"
+                    emailAddressTaken = case mPerson of
+                                            Just p ->  Just "email address already taken"
+                                            Nothing -> Nothing
+                    se = SignupError { usernameError = catMaybes [ check isValidEmail email "not valid email"
+                                                                 , emailAddressTaken ]
+                                     , passwordError = catMaybes [check validPasswordLength pass1 "Password is too short"]
+                                     , passwordErrorConfirm = catMaybes [passwordsMatch]
+                                     }
+
+                case maybeNoErrors se of
+                  Nothing           -> do insertPerson email pass1
+                                          simpleText "success!"
+                  Just serrors -> do liftIO $ pPrint se
+                                     lucid (signupPage (Just serrors) LoggedOut)
             Nothing -> text ("Oops, something went wrong with your request!")
 
     -- TODO: Make accessible only for admins
