@@ -1,61 +1,67 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
-{-# LANGUAGE EmptyDataDecls             #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE GADTs                      #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE QuasiQuotes                #-}
-{-# LANGUAGE TemplateHaskell            #-}
-{-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE TypeFamilies        #-}
 module Main where
 
 import Control.Monad        (liftM, when, unless, guard)
 import Control.Monad.Trans  (lift, MonadIO, liftIO)
 import Control.Monad.Trans.Resource  (ResourceT, runResourceT)
 import Control.Monad.Logger    (runNoLoggingT, runStderrLoggingT, NoLoggingT)
-
 import Data.Char (toLower)
 import Data.Word8 hiding (toLower)
+import Data.Maybe
 import qualified Data.ByteString as BS
 import qualified Crypto.Hash.SHA256 as SHA
-import System.Random
-
 import qualified Data.ByteString.Base16 as B16
-
 import qualified Data.ByteString.Char8 as B
 import qualified Data.Configurator as C
-import Data.Monoid ((<>))
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
---import Data.UnixTime (getUnixTime, toClockTime, utSeconds)
+import Data.UnixTime (getUnixTime, toClockTime, utSeconds)
 import Data.Time (UTCTime, getCurrentTime, addUTCTime)
+import Lucid
+import Network.Socket
+import Network.Wai.Middleware.Static (staticPolicy, addBase)
+import Network.Wai
+import System.Random
+import Text.Pretty.Simple (pPrint)
+
+----------------- Persistence -----------------
 import qualified Database.Persist as P
 import Database.Persist.Postgresql ( ConnectionString, createPostgresqlPool
                                    , SqlPersistT)
 import Database.Persist.Sql hiding (get)
 import qualified Database.Persist.Sql as PSQL
 import Database.Persist.TH
-import Lucid
-import Network.Wai.Middleware.Static (staticPolicy, addBase)
 
------- Spock ----------
-import Web.Spock ( get, getpost, post, getState, HasSpock, html, lazyBytes, middleware
-                 , redirect, runSpock, spock, SpockM, SpockCtxM, SpockConn, ActionCtxT
-                 , SpockActionCtx, root, RouteSpec, renderRoute, runQuery, text, var
-                 , Var, (<//>) )
+----------------- Spock -----------------------
+import Web.Spock ( get, post, HasSpock, lazyBytes, middleware
+                 , redirect, runSpock, spock, SpockCtxM, SpockConn, ActionCtxT
+                 , SpockActionCtx, root, runQuery, text, var
+                 , (<//>) )
 
 import Web.Spock.Config  ( defaultSpockCfg, PoolOrConn (PCNoDatabase, PCPool)
                          , SpockCfg )
-import Web.Spock.Action  ( request, body, params, param, param')
+import Web.Spock.Action  ( request, params, param, param')
 import Web.Spock.SessionActions (getSessionId, readSession, writeSession)
 
------- Pidgeon --------
+--------------- PidgeonClub ------------------
 import PidgeonClub.Views
---import PidgeonClub.Actions
-import PidgeonClub.Core
 import PidgeonClub.Types
+import PidgeonClub.Forms
+
+data PidgeonConfig = PidgeonConfig
+    { dbHost :: HostName
+    , dbPort :: Int
+    , dbName :: String
+    , dbUser :: String
+    , dbPass :: String
+    } deriving (Show)
+
+data AppState = AppState {getCfg :: PidgeonConfig}
+type AppSession = Maybe SessieId
+type PidgeonApp ctx a = SpockCtxM ctx SqlBackend AppSession AppState a
+type PidgeonAction = SpockActionCtx () SqlBackend AppSession AppState
 
 main :: IO ()
 main = do
@@ -94,87 +100,103 @@ app :: PidgeonApp () ()
 app =  do
     middleware (staticPolicy (addBase "static"))
 
-    get "/" $ lucid homePage
+    get "/" $ do
+        r <- readSession
+        case r of
+            Just sess -> lucid $ homePage LoggedIn
+            Nothing -> lucid $ homePage LoggedOut
 
     get "/signup" $ do
-        lucid (signupPage Nothing)
+        r <- readSession
+        case r of
+            Just sess -> lucid (signupPage Nothing LoggedIn)
+            Nothing -> lucid (signupPage Nothing LoggedOut)
+
 
     post "/signup" $ do
         mEmail <- param "email"
         mPassword <- param "password"
         mPasswordConf <- param "passwordConfirm"
-        case mEmail of
-          Just email -> do
-            mPerson <- runDB $ getBy (UniqueUsername $ T.toLower email)
-            case mPerson of
-              Just person -> simpleText ("This user already exists")
-              Nothing ->
-                  case mPassword of
-                    Just p1 -> case mPasswordConf of
-                        Just p2 ->
-                           if p1 == p2 then do
-                               g <- liftIO $ newStdGen
-                               let salt = randomBS 16 g
-                                   hash = hashPassword p1 salt
-                                   mail = T.toLower email
-                               runDB $ insert $ Person mail (makeHex hash) (makeHex salt) Nothing
-                               liftIO $ print ("Added: "++ T.unpack mail)
-                               simpleText ("succes!")
-                           else do
-                               simpleText ("passwords don't match!")
-                        Nothing -> simpleText ("oops, passwordConfirm param missing from form")
-                    Nothing -> simpleText ("oops, password param missing from form")
-          Nothing -> simpleText ("oops, email param missing from form")
-    -- TODO:
-    -- Currently this code will short circuit on the first Nothing, but
-    -- actually want to check all params and return errors on all params.
+
+        let mSr = SignupRequest <$> mEmail <*> mPassword <*> mPasswordConf
+
+        case mSr of
+            Just (SignupRequest email pass1 pass2) -> do
+                mPerson <- runDB $ getBy (UniqueUsername $ T.toLower email)
+
+                let passwordsMatch = if pass1 == pass2
+                                     then Nothing
+                                     else Just "passwords do not match"
+                    emailAddressTaken = case mPerson of
+                                            Just p ->  Just "email address already taken"
+                                            Nothing -> Nothing
+                    se = SignupError { usernameError = catMaybes [ check isValidEmail email "not valid email"
+                                                                 , emailAddressTaken ]
+                                     , passwordError = catMaybes [check validPasswordLength pass1 "Password is too short"]
+                                     , passwordErrorConfirm = catMaybes [passwordsMatch]
+                                     }
+
+                case maybeNoErrors se of
+                  Nothing           -> do insertPerson email pass1
+                                          simpleText "success!"
+                  Just serrors -> do liftIO $ pPrint se
+                                     lucid (signupPage (Just serrors) LoggedOut)
+            Nothing -> text ("Oops, something went wrong with your request!")
 
     -- TODO: Make accessible only for admins
-    -- TODO: For now, just add requireUser
-    get "/allusers" $ do
+    get "/allusers" $ requireUser $ \_ -> do
         users <- runDB $ selectList [] [Asc PersonEmail] -- [Entity record]
-        lucid $ allUsersPage (map (\u -> let e = entityVal u
-                                         in (personEmail e, personPassword e,personSalt e )) users)
+        let persons = map entityVal users
+        lucid $ allUsersPage persons LoggedIn
 
     -- The user's public page
     -- Display some publicly available information on the user on this page
-    get ("/user" <//> var) $ \user -> (lucid $ userPage user)
+    get ("/user" <//> var) $ \user -> (lucid $ userPage user LoggedOut )
 
     -- The user's settings page
     get "/profile" $ requireUser $ \u -> do
-        liftIO $ print u
+        liftIO $ pPrint u
         mPerson <- runDB $ PSQL.get u
         case mPerson of
-            Just p -> lucid $ profilePage p
+            Just p -> lucid $ profilePage p LoggedIn
             Nothing -> simpleText "user doesn't exist anymore"
 
-    get "/login" $ lucid loginPage
-    --TODO: if already logged in, let the user know and
-    -- offer to log out.
+    get "/login" $ do
+        r <- readSession
+        case r of
+            Nothing -> lucid $ loginPage Nothing LoggedOut
+            Just sess -> requireUser $ \u -> do
+                mPerson <- runDB $ PSQL.get u
+                case mPerson of
+                    Just u -> lucid $ loginPage (Just u) LoggedIn
+                    Nothing -> simpleText "user doesn't exist anymore"
 
     post "/login" $ do
-        showRequest
         email <- param "email"
         password <- param "password"
         case email of
           Just e -> case password of
             Just p -> do
                mPerson <- runDB $ getBy (UniqueUsername $ T.toLower e)
-               mPass <- runDB $ getBy (UniqueUsername p)
                case mPerson of
                    Just personEntity -> do
-                       liftIO $ print personEntity
+                       liftIO $ pPrint personEntity
                        now <- liftIO getCurrentTime
+                       r <- request
                        let validTil = addUTCTime 3600 now
-                           person = entityKey personEntity
+                           personId = entityKey personEntity
                            salt = personSalt $ entityVal personEntity
                            hash = personPassword $ entityVal personEntity
+                           ip =  T.pack $ getIP4 $ remoteHost r
 
                        if hash == (makeHex $ hashPassword p (decodeHex $ salt))
-                       then do sid <- runDB $ insert (Sessie validTil person)
-                               liftIO $ print sid
+                       then do sid <- runDB $ do deleteWhere [ SessiePersonId ==. personId ]
+                                                 --TODO: save unixtime
+                                                 insert (Sessie validTil personId ip)
+                               liftIO $ pPrint sid
+                               liftIO $ pPrint personId
                                writeSession (Just sid)
-                               simpleText ("Login succesful.")
+                               redirect "/"
                        else simpleText ("Invalid email or password")
                    Nothing -> simpleText ("Invalid email or password")
             Nothing -> simpleText ("oops, password param missing from form")
@@ -185,6 +207,10 @@ app =  do
         killSessions u
         writeSession Nothing
         redirect "/"
+
+    get "/reset" $ do
+        -- TODO: reset password form
+        simpleText "Reset password form"
 
 requireUser :: (Key Person -> PidgeonAction a) -> PidgeonAction a
 requireUser action = do
@@ -200,18 +226,42 @@ requireUser action = do
 getUserFromSession :: SessieId -> PidgeonAction (Maybe PersonId)
 getUserFromSession sid = do
   mSid <- runDB $ PSQL.get sid -- :: Maybe Sessie
-  liftIO $ print mSid
+  liftIO $ pPrint mSid
   case mSid of
       Just sess -> do
-          liftIO $ print sess
+          liftIO $ pPrint sess
           now <- liftIO getCurrentTime
           if sessieValidUntil sess > now
             then return $ Just (sessiePersonId sess)
             else simpleText ("Session has expired")
-      Nothing -> simpleText ("Invalid session")
+      Nothing -> do
+          writeSession Nothing
+          simpleText ("Invalid session")
 
 killSessions :: PersonId -> PidgeonAction ()
-killSessions pId = runDB $ deleteWhere [ SessiePersonId ==. pId ]
+killSessions personId = runDB $ deleteWhere [ SessiePersonId ==. personId ]
+
+insertPerson :: T.Text -> T.Text -> PidgeonAction ()
+insertPerson email pass = do
+  g <- liftIO $ newStdGen
+  let salt = randomBS 16 g
+      hash = hashPassword pass salt
+      mail = T.toLower email
+  runDB $ insert $ Person mail (makeHex hash) (makeHex salt) Nothing
+  liftIO $ print ("Added: "++ T.unpack mail)
+
+showRequest :: PidgeonAction ()
+showRequest = do
+    r <- request
+    p <- params
+    liftIO $ do pPrint r
+                print p
+
+-- TODO: Move out of Main.hs
+getIP4 :: SockAddr -> String
+getIP4 ipport = let s = show ipport
+               in takeWhile (/= ':') s
+
 
 ---------------------- Lucid stuff -----------------------
 -- TODO: move out of Main.hs
@@ -219,7 +269,7 @@ lucid :: MonadIO m => Html a1 -> ActionCtxT ctx m a
 lucid = lazyBytes . renderBS
 
 simpleText :: MonadIO m => T.Text -> ActionCtxT ctx m a
-simpleText x = lucid (simplePage x)
+simpleText x = lucid (simplePage x LoggedOut)
 ---------------------- Persistent ------------------------
 -- TODO: move out of Main.hs
 runDB :: (HasSpock m, SpockConn m ~ SqlBackend) =>

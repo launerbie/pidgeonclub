@@ -23,6 +23,7 @@ executable pidgeonclub
                      , bytestring
                      , configurator
                      , cryptohash
+                     , email-validate
                      , http-types
                      , hvect
                      , lucid
@@ -33,6 +34,7 @@ executable pidgeonclub
                      , persistent-postgresql
                      , persistent-sqlite
                      , persistent-template
+                     , pretty-simple
                      , path-pieces
                      , random
                      , resourcet
@@ -45,7 +47,7 @@ executable pidgeonclub
                      , wai
                      , wai-middleware-static
                      , word8
-  other-modules:       PidgeonClub.Core
+  other-modules:       PidgeonClub.Forms
                      , PidgeonClub.Views
                      , PidgeonClub.Types
                      , PidgeonClub.Actions
