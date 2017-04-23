@@ -100,14 +100,16 @@ simplePage x s = basePage (getNavMenu s homeNav) $ do
 alreadyLoggedInPage :: Person -> Html ()
 alreadyLoggedInPage p = do
   div_ [class_ "container"] $ do
-      (p_ $ toHtml $ "Already logged in as: " <> personEmail p)
-      (p_ $ toHtml $ "Would you like to log out?")
-      a_ [class_ "btn btn-default", href_ "/logout", role_ "button"] "logout"
-
+     div_ [class_ "panel panel-default"] $ do
+        div_ [class_ "panel-heading"] "Log in to the Pidgeon Club"
+        div_ [class_ "panel-body"] $ do
+           (p_ $ toHtml $ "Already logged in as: " <> personEmail p)
+           (p_ $ toHtml $ "Would you like to log out?")
+           a_ [class_ "btn btn-success", href_ "/logout", role_ "button"] "logout"
 
 loginPage :: Maybe Person -> LogStatus -> Html ()
 loginPage (Just p) s = basePage (getNavMenu s loginNav) (alreadyLoggedInPage p)
-loginPage Nothing s = basePage (getNavMenu s loginNav) suchHorizontalLoginForm
+loginPage Nothing s = basePage (getNavMenu s loginNav) loginForm
 
 signupPage :: Maybe SignupError -> LogStatus -> Html ()
 signupPage e s = basePage (getNavMenu s signupNav) (signupForm e)
@@ -149,55 +151,62 @@ emptyDiv t = div_ [class_ "container"] (p_ $ toHtml t)
 signupForm :: Maybe SignupError -> Html ()
 signupForm mErr = do
   div_ [class_ "container"] $ do
-     form_ [class_ "form-horizontal", method_ "post", action_ "/signup"] $ do
-         div_ [class_ "form-group"] $ do
-            label_ [for_ "email", class_ "col-sm-2 control-label"] "email: "
-            div_ [class_ "col-sm-4"] $ do
-               input_ [type_ "email", class_ "form-control", name_ "email", placeholder_ "pieterpost@mail.com"]
-               {- formErrors -}
-               case mErr of
-                   Just e -> alert $ usernameError e
-                   Nothing -> mempty
-         div_ [class_ "form-group"] $ do
-            label_ [for_ "password", class_ "col-sm-2 control-label"] "password: "
-            div_ [class_ "col-sm-4"]$ do
-               input_ [type_ "password",  class_ "form-control", name_ "password", placeholder_ "supersecret123"]
-               {- formErrors -}
-               case mErr of
-                   Just e -> alert $ passwordError e
-                   Nothing -> mempty
-         div_ [class_ "form-group"] $ do
-            label_ [for_ "passwordConfirm", class_ "col-sm-2 control-label"] "confirm password: "
-            div_ [class_ "col-sm-4"]$ do
-               input_ [type_ "password",  class_ "form-control", name_ "passwordConfirm", placeholder_ "supersecret123"]
-               {- formErrors -}
-               case mErr of
-                   Just e -> alert $ passwordErrorConfirm e
-                   Nothing -> mempty
-         div_ [class_ "form-group"] $ do
-            div_ [class_ "col-sm-offset-2 col-sm-4"] $ do
-               button_ [type_ "submit", class_ "btn btn-default"] "Register"
-  div_ [class_ "container"] $ do
-     a_ [href_ "/reset" ] "Forgot your password?"
+     div_ [class_ "panel panel-default"] $ do
+        div_ [class_ "panel-heading"] "Become a Pidgeon Club member!"
+        div_ [class_ "panel-body"] $ do
+           form_ [class_ "form-horizontal", method_ "post", action_ "/signup"] $ do
+               div_ [class_ "form-group"] $ do
+                  label_ [for_ "email", class_ "col-sm-2 control-label"] "email: "
+                  div_ [class_ "col-sm-4"] $ do
+                     input_ [type_ "email", class_ "form-control", name_ "email", placeholder_ "pieterpost@mail.com"]
+                     {- formErrors -}
+                     case mErr of
+                         Just e -> alert $ usernameError e
+                         Nothing -> mempty
+               div_ [class_ "form-group"] $ do
+                  label_ [for_ "password", class_ "col-sm-2 control-label"] "password: "
+                  div_ [class_ "col-sm-4"]$ do
+                     input_ [type_ "password",  class_ "form-control", name_ "password", placeholder_ "supersecret123"]
+                     {- formErrors -}
+                     case mErr of
+                         Just e -> alert $ passwordError e
+                         Nothing -> mempty
+               div_ [class_ "form-group"] $ do
+                  label_ [for_ "passwordConfirm", class_ "col-sm-2 control-label"] "confirm password: "
+                  div_ [class_ "col-sm-4"]$ do
+                     input_ [type_ "password",  class_ "form-control", name_ "passwordConfirm", placeholder_ "supersecret123"]
+                     {- formErrors -}
+                     case mErr of
+                         Just e -> alert $ passwordErrorConfirm e
+                         Nothing -> mempty
+               div_ [class_ "form-group"] $ do
+                  div_ [class_ "col-sm-offset-2 col-sm-4"] $ do
+                     button_ [type_ "submit", class_ "btn btn-default"] "Register"
+           p_ $ do "Already a member? "
+                   a_ [href_ "/login" ] "Click here to login"
 
-suchHorizontalLoginForm :: Html ()
-suchHorizontalLoginForm = do
+loginForm :: Html ()
+loginForm = do
   div_ [class_ "container"] $ do
-     form_ [class_ "form-horizontal", method_ "post", action_ "/login"] $ do
-         div_ [class_ "form-group"] $ do
-            label_ [for_ "inputEmail", class_ "col-sm-2 control-label"] "email: "
-            div_ [class_ "col-sm-4"]$ do
-               input_ [type_ "email", class_ "form-control", name_ "email", placeholder_ ""]
-         div_ [class_ "form-group"] $ do
-            label_ [for_ "password", class_ "col-sm-2 control-label"] "password: "
-            div_ [class_ "col-sm-4"]$ do
-               input_ [type_ "password",  class_ "form-control", name_ "password", placeholder_ ""]
-         div_ [class_ "form-group"] $ do
-            div_ [class_ "col-sm-offset-2 col-sm-4"] $ do
-               button_ [type_ "submit", class_ "btn btn-default"] "Sign in"
-  div_ [class_ "container"] $ do
-     p_ $ do "Don't have an account? "
-             a_ [href_ "/signup" ] "Become a pidgeon!"
+     div_ [class_ "panel panel-default"] $ do
+        div_ [class_ "panel-heading"] "Log in to the Pidgeon Club"
+        div_ [class_ "panel-body"] $ do
+           form_ [class_ "form-horizontal", method_ "post", action_ "/login"] $ do
+               div_ [class_ "form-group"] $ do
+                  label_ [for_ "inputEmail", class_ "col-sm-2 control-label"] "email: "
+                  div_ [class_ "col-sm-4"]$ do
+                     input_ [type_ "email", class_ "form-control", name_ "email", placeholder_ ""]
+               div_ [class_ "form-group"] $ do
+                  label_ [for_ "password", class_ "col-sm-2 control-label"] "password: "
+                  div_ [class_ "col-sm-4"]$ do
+                     input_ [type_ "password",  class_ "form-control", name_ "password", placeholder_ ""]
+                     a_ [href_ "/reset" ] "Forgot your password?"
+               div_ [class_ "form-group"] $ do
+                  div_ [class_ "col-sm-offset-2 col-sm-4"] $ do
+                     button_ [type_ "submit", class_ "btn btn-success"] "Sign in"
+           div_ [class_ "container"] $ do
+              p_ $ do "Don't have an account? "
+                      a_ [href_ "/signup" ] "Click here to become a pidgeon!"
 
 footer :: Html ()
 footer = do
