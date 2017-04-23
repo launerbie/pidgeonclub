@@ -105,7 +105,7 @@ alreadyLoggedInPage p = do
         div_ [class_ "panel-body"] $ do
            (p_ $ toHtml $ "Already logged in as: " <> personEmail p)
            (p_ $ toHtml $ "Would you like to log out?")
-           a_ [class_ "btn btn-success", href_ "/logout", role_ "button"] "logout"
+           a_ [class_ "btn btn-success", href_ "/logout", role_ "button"] "Log out"
 
 loginPage :: Maybe Person -> LogStatus -> Html ()
 loginPage (Just p) s = basePage (getNavMenu s loginNav) (alreadyLoggedInPage p)
@@ -181,7 +181,7 @@ signupForm mErr = do
                          Nothing -> mempty
                div_ [class_ "form-group"] $ do
                   div_ [class_ "col-sm-offset-2 col-sm-4"] $ do
-                     button_ [type_ "submit", class_ "btn btn-default"] "Register"
+                     button_ [type_ "submit", class_ "btn btn-success"] "Register"
            p_ $ do "Already a member? "
                    a_ [href_ "/login" ] "Click here to login"
 
