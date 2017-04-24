@@ -10,6 +10,7 @@ import Control.Monad.Logger    (runNoLoggingT, runStderrLoggingT, NoLoggingT)
 import Data.Char (toLower)
 import Data.Word8 hiding (toLower)
 import Data.Maybe
+import Data.Monoid ((<>))
 import qualified Data.ByteString as BS
 import qualified Crypto.Hash.SHA256 as SHA
 import qualified Data.ByteString.Base16 as B16
@@ -209,8 +210,15 @@ app =  do
         redirect "/"
 
     get "/reset" $ do
-        -- TODO: reset password form
-        simpleText "Reset password form"
+        lucid $ resetPage LoggedOut
+
+    post "/reset" $ do
+        mEmail <- param "email"
+        case mEmail of
+            Just e -> do
+              simpleText ("A password reset mail has been sent to: " <> e)
+              --TODO: actually send password reset mail
+            Nothing -> text ("Oops, something went wrong with your request!")
 
 requireUser :: (Key Person -> PidgeonAction a) -> PidgeonAction a
 requireUser action = do

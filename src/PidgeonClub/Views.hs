@@ -111,6 +111,9 @@ loginPage :: Maybe Person -> LogStatus -> Html ()
 loginPage (Just p) s = basePage (getNavMenu s loginNav) (alreadyLoggedInPage p)
 loginPage Nothing s = basePage (getNavMenu s loginNav) loginForm
 
+resetPage :: LogStatus -> Html ()
+resetPage s = basePage (getNavMenu s homeNav) resetPassForm
+
 signupPage :: Maybe SignupError -> LogStatus -> Html ()
 signupPage e s = basePage (getNavMenu s signupNav) (signupForm e)
 
@@ -207,6 +210,22 @@ loginForm = do
            div_ [class_ "container"] $ do
               p_ $ do "Don't have an account? "
                       a_ [href_ "/signup" ] "Click here to become a pidgeon!"
+
+resetPassForm :: Html ()
+resetPassForm = do
+  div_ [class_ "container"] $ do
+     div_ [class_ "panel panel-default"] $ do
+        div_ [class_ "panel-heading"] "Reset your password"
+        div_ [class_ "panel-body"] $ do
+           p_ "Forgot your password? Enter your email address below and request a password reset mail"
+           form_ [class_ "form-horizontal", method_ "post", action_ "/reset"] $ do
+               div_ [class_ "form-group"] $ do
+                  label_ [for_ "inputEmail", class_ "col-sm-2 control-label"] "email: "
+                  div_ [class_ "col-sm-4"]$ do
+                     input_ [type_ "email", class_ "form-control", name_ "email", placeholder_ ""]
+               div_ [class_ "form-group"] $ do
+                  div_ [class_ "col-sm-offset-2 col-sm-4"] $ do
+                     button_ [type_ "submit", class_ "btn btn-success"] "Send password reset mail"
 
 footer :: Html ()
 footer = do
