@@ -7,6 +7,14 @@ import Text.Email.Validate (isValid)
 import Data.Text.Encoding (encodeUtf8)
 
 -------------------------------- Forms -------------------------------------
+data SignupFormError = EmailAddressExists
+                     | InvalidEmailAddress
+                     | PasswordTooShort
+                     | PasswordsDontMatch
+                     deriving (Eq, Show)
+
+data PidgeonError = MissingParams deriving (Eq, Show)
+
 data SignupError = SignupError
     { usernameError :: [String]
     , passwordError :: [String]

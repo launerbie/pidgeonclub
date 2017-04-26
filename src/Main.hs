@@ -6,6 +6,7 @@ module Main where
 import Control.Monad        (liftM, when, unless, guard)
 import Control.Monad.Trans  (lift, MonadIO, liftIO)
 import Control.Monad.Trans.Resource  (ResourceT, runResourceT)
+import Control.Monad.Trans.Maybe
 import Control.Monad.Logger    (runNoLoggingT, runStderrLoggingT, NoLoggingT)
 import Data.Char (toLower)
 import Data.Word8 hiding (toLower)
@@ -113,36 +114,12 @@ app =  do
             Just sess -> lucid (signupPage Nothing LoggedIn)
             Nothing -> lucid (signupPage Nothing LoggedOut)
 
-
     post "/signup" $ do
-        mEmail <- param "email"
-        mPassword <- param "password"
-        mPasswordConf <- param "passwordConfirm"
-
-        let mSr = SignupRequest <$> mEmail <*> mPassword <*> mPasswordConf
-
-        case mSr of
-            Just (SignupRequest email pass1 pass2) -> do
-                mPerson <- runDB $ getBy (UniqueUsername $ T.toLower email)
-
-                let passwordsMatch = if pass1 == pass2
-                                     then Nothing
-                                     else Just "passwords do not match"
-                    emailAddressTaken = case mPerson of
-                                            Just p ->  Just "email address already taken"
-                                            Nothing -> Nothing
-                    se = SignupError { usernameError = catMaybes [ check isValidEmail email "not valid email"
-                                                                 , emailAddressTaken ]
-                                     , passwordError = catMaybes [check validPasswordLength pass1 "Password is too short"]
-                                     , passwordErrorConfirm = catMaybes [passwordsMatch]
-                                     }
-
-                case maybeNoErrors se of
-                  Nothing           -> do insertPerson email pass1
-                                          simpleText "success!"
-                  Just serrors -> do liftIO $ pPrint se
-                                     lucid (signupPage (Just serrors) LoggedOut)
-            Nothing -> text ("Oops, something went wrong with your request!")
+        sr          <- getSignupRequest
+        validatedSR <- validateSignupRequest sr
+        p           <- mkPerson validatedSR
+        insertPerson p
+        lucid $ signupSuccessPage (srEmail sr) LoggedOut
 
     -- TODO: Make accessible only for admins
     get "/allusers" $ requireUser $ \_ -> do
@@ -249,14 +226,8 @@ getUserFromSession sid = do
 killSessions :: PersonId -> PidgeonAction ()
 killSessions personId = runDB $ deleteWhere [ SessiePersonId ==. personId ]
 
-insertPerson :: T.Text -> T.Text -> PidgeonAction ()
-insertPerson email pass = do
-  g <- liftIO $ newStdGen
-  let salt = randomBS 16 g
-      hash = hashPassword pass salt
-      mail = T.toLower email
-  runDB $ insert $ Person mail (makeHex hash) (makeHex salt) Nothing
-  liftIO $ print ("Added: "++ T.unpack mail)
+insertPerson :: Person -> PidgeonAction (Key Person)
+insertPerson p = runDB $ insert p
 
 showRequest :: PidgeonAction ()
 showRequest = do
@@ -269,6 +240,45 @@ showRequest = do
 getIP4 :: SockAddr -> String
 getIP4 ipport = let s = show ipport
                in takeWhile (/= ':') s
+
+getSignupRequest :: PidgeonAction SignupRequest
+getSignupRequest = do
+    mEmail <- param "email"
+    mPassword <- param "password"
+    mPasswordConf <- param "passwordConfirm"
+    let mSr = SignupRequest <$> mEmail <*> mPassword <*> mPasswordConf
+    case mSr of
+      Just sr -> return sr
+      Nothing -> text ("Oops, something went wrong with your request!")
+
+mkPerson :: SignupRequest -> PidgeonAction Person
+mkPerson sr = do
+  g <- liftIO $ newStdGen
+  let salt = randomBS 16 g
+      hash = hashPassword (srPassword sr) salt
+      mail = T.toLower (srEmail sr)
+  return $ Person mail (makeHex hash) (makeHex salt) Nothing
+
+validateSignupRequest :: SignupRequest -> PidgeonAction SignupRequest
+validateSignupRequest sr@(SignupRequest email pass1 pass2) = do
+    mPerson <- runDB $ getBy (UniqueUsername $ T.toLower email)
+    let passwordsMatch = if pass1 == pass2
+                         then Nothing
+                         else Just "passwords do not match"
+        emailAddressTaken = case mPerson of
+                                Just p ->  Just "email address already taken"
+                                Nothing -> Nothing
+        se = SignupError { usernameError = catMaybes [ check isValidEmail email "not valid email"
+                                                     , emailAddressTaken ]
+                         , passwordError = catMaybes [check validPasswordLength pass1 "Password is too short"]
+                         , passwordErrorConfirm = catMaybes [passwordsMatch]
+                         }
+
+    case maybeNoErrors se of
+      Nothing      -> return sr
+      Just serrors -> do liftIO $ pPrint se
+                         lucid (signupPage (Just serrors) LoggedOut)
+
 
 
 ---------------------- Lucid stuff -----------------------

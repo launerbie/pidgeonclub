@@ -117,6 +117,13 @@ resetPage s = basePage (getNavMenu s homeNav) resetPassForm
 signupPage :: Maybe SignupError -> LogStatus -> Html ()
 signupPage e s = basePage (getNavMenu s signupNav) (signupForm e)
 
+signupSuccessPage :: T.Text -> LogStatus -> Html ()
+signupSuccessPage email s = basePage (getNavMenu s signupNav) $ do
+  div_ [class_ "container"] $ do
+     p_ $ toHtml $ "An activation mail has been sent to: " <> email
+     p_ $ a_ [href_ "/"] "Click here to go back"
+
+
 profilePage :: Person -> LogStatus -> Html ()
 profilePage p s = basePage (getNavMenu s profileNav) $ do
   div_ [class_ "container"] $ do
