@@ -27,6 +27,11 @@ data SignupRequest = SignupRequest
     , srPasswordConfirm :: T.Text
     } deriving (Eq, Show)
 
+data LoginRequest = LoginRequest
+    { lrEmail :: T.Text
+    , lrPassword :: T.Text
+    } deriving (Eq, Show)
+
 ------------------- Validation -----------------------------
 type ErrorMsg = String
 

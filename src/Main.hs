@@ -150,36 +150,12 @@ app =  do
                     Nothing -> simpleText "user doesn't exist anymore"
 
     post "/login" $ do
-        email <- param "email"
-        password <- param "password"
-        case email of
-          Just e -> case password of
-            Just p -> do
-               mPerson <- runDB $ getBy (UniqueUsername $ T.toLower e)
-               case mPerson of
-                   Just personEntity -> do
-                       liftIO $ pPrint personEntity
-                       now <- liftIO getCurrentTime
-                       r <- request
-                       let validTil = addUTCTime 3600 now
-                           personId = entityKey personEntity
-                           salt = personSalt $ entityVal personEntity
-                           hash = personPassword $ entityVal personEntity
-                           ip =  T.pack $ getIP4 $ remoteHost r
-
-                       if hash == (makeHex $ hashPassword p (decodeHex $ salt))
-                       then do sid <- runDB $ do deleteWhere [ SessiePersonId ==. personId ]
-                                                 --TODO: save unixtime
-                                                 insert (Sessie validTil personId ip)
-                               liftIO $ pPrint sid
-                               liftIO $ pPrint personId
-                               writeSession (Just sid)
-                               redirect "/"
-                       else simpleText ("Invalid email or password")
-                   Nothing -> simpleText ("Invalid email or password")
-            Nothing -> simpleText ("oops, password param missing from form")
-          Nothing -> simpleText ("oops, email param missing from form")
-        redirect "/"
+        lr                 <- loginRequest
+        (personId, person) <- getPersonFromRequest lr
+        (salt, hash)       <- return (personSalt person, personPassword person)
+        if hash == (makeHex $ hashPassword (lrPassword lr) (decodeHex $ salt))
+            then loginUser personId
+            else simpleText ("Invalid email or password")
 
     get "/logout" $ requireUser $ \u -> do
         killSessions u
@@ -196,6 +172,16 @@ app =  do
               simpleText ("A password reset mail has been sent to: " <> e)
               --TODO: actually send password reset mail
             Nothing -> text ("Oops, something went wrong with your request!")
+
+loginUser :: PersonId -> PidgeonAction ()
+loginUser personId = do
+  ip       <- fmap (T.pack . getIP4 . remoteHost) request
+  validTil <- liftIO $ liftM (addUTCTime 3600) getCurrentTime
+  sid      <- runDB $ do deleteWhere [ SessiePersonId ==. personId ]
+                         insert (Sessie validTil personId ip)
+                         --TODO: save unixtime
+  writeSession (Just sid)
+  redirect "/"
 
 requireUser :: (Key Person -> PidgeonAction a) -> PidgeonAction a
 requireUser action = do
@@ -250,6 +236,24 @@ getSignupRequest = do
     case mSr of
       Just sr -> return sr
       Nothing -> text ("Oops, something went wrong with your request!")
+
+loginRequest :: PidgeonAction LoginRequest
+loginRequest = do
+    mEmail <- param "email"
+    mPassword <- param "password"
+    let lr = LoginRequest <$> mEmail <*> mPassword
+    case lr of
+      Just r -> return r
+      Nothing -> text ("Oops, something went wrong with your request!")
+
+getPersonFromRequest :: LoginRequest -> PidgeonAction ((Key Person, Person))
+getPersonFromRequest lr = do
+  mPersonEnt <- runDB $ getBy (UniqueUsername $ T.toLower (lrEmail lr))
+  case mPersonEnt of
+      Just ent -> do
+          liftIO $ pPrint ent
+          return (entityKey ent, entityVal ent)
+      Nothing -> simpleText ("Invalid email or password")
 
 mkPerson :: SignupRequest -> PidgeonAction Person
 mkPerson sr = do
