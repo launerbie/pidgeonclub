@@ -114,8 +114,8 @@ loginPage Nothing s = basePage (getNavMenu s loginNav) loginForm
 resetPage :: LogStatus -> Html ()
 resetPage s = basePage (getNavMenu s homeNav) resetPassForm
 
-signupPage :: Maybe SignupError -> LogStatus -> Html ()
-signupPage e s = basePage (getNavMenu s signupNav) (signupForm e)
+signupPage :: Maybe [SignupFormError] -> LogStatus -> Html ()
+signupPage mErr s = basePage (getNavMenu s signupNav) (signupForm mErr)
 
 signupSuccessPage :: T.Text -> LogStatus -> Html ()
 signupSuccessPage email s = basePage (getNavMenu s signupNav) $ do
@@ -158,7 +158,7 @@ emptyDiv :: String -> Html ()
 emptyDiv t = div_ [class_ "container"] (p_ $ toHtml t)
 
 -- ######################## Forms #################################
-signupForm :: Maybe SignupError -> Html ()
+signupForm :: Maybe [SignupFormError] -> Html ()
 signupForm mErr = do
   div_ [class_ "container"] $ do
      div_ [class_ "panel panel-default"] $ do
@@ -169,29 +169,21 @@ signupForm mErr = do
                   label_ [for_ "email", class_ "col-sm-2 control-label"] "email: "
                   div_ [class_ "col-sm-4"] $ do
                      input_ [type_ "email", class_ "form-control", name_ "email", placeholder_ "pieterpost@mail.com"]
-                     {- formErrors -}
-                     case mErr of
-                         Just e -> alert $ usernameError e
-                         Nothing -> mempty
                div_ [class_ "form-group"] $ do
                   label_ [for_ "password", class_ "col-sm-2 control-label"] "password: "
                   div_ [class_ "col-sm-4"]$ do
                      input_ [type_ "password",  class_ "form-control", name_ "password", placeholder_ "supersecret123"]
-                     {- formErrors -}
-                     case mErr of
-                         Just e -> alert $ passwordError e
-                         Nothing -> mempty
                div_ [class_ "form-group"] $ do
                   label_ [for_ "passwordConfirm", class_ "col-sm-2 control-label"] "confirm password: "
                   div_ [class_ "col-sm-4"]$ do
                      input_ [type_ "password",  class_ "form-control", name_ "passwordConfirm", placeholder_ "supersecret123"]
-                     {- formErrors -}
-                     case mErr of
-                         Just e -> alert $ passwordErrorConfirm e
-                         Nothing -> mempty
                div_ [class_ "form-group"] $ do
                   div_ [class_ "col-sm-offset-2 col-sm-4"] $ do
                      button_ [type_ "submit", class_ "btn btn-success"] "Register"
+                     -- Form errors
+                     case mErr of
+                         Just e -> alert $ map show e
+                         Nothing -> mempty
            p_ $ do "Already a member? "
                    a_ [href_ "/login" ] "Click here to login"
 

@@ -115,9 +115,8 @@ app =  do
             Nothing -> lucid (signupPage Nothing LoggedOut)
 
     post "/signup" $ do
-        sr          <- getSignupRequest
-        validatedSR <- validateSignupRequest sr
-        p           <- mkPerson validatedSR
+        sr <- validSignupRequest
+        p  <- mkPerson sr
         insertPerson p
         lucid $ signupSuccessPage (srEmail sr) LoggedOut
 
@@ -263,27 +262,21 @@ mkPerson sr = do
       mail = T.toLower (srEmail sr)
   return $ Person mail (makeHex hash) (makeHex salt) Nothing
 
-validateSignupRequest :: SignupRequest -> PidgeonAction SignupRequest
-validateSignupRequest sr@(SignupRequest email pass1 pass2) = do
-    mPerson <- runDB $ getBy (UniqueUsername $ T.toLower email)
-    let passwordsMatch = if pass1 == pass2
-                         then Nothing
-                         else Just "passwords do not match"
-        emailAddressTaken = case mPerson of
-                                Just p ->  Just "email address already taken"
-                                Nothing -> Nothing
-        se = SignupError { usernameError = catMaybes [ check isValidEmail email "not valid email"
-                                                     , emailAddressTaken ]
-                         , passwordError = catMaybes [check validPasswordLength pass1 "Password is too short"]
-                         , passwordErrorConfirm = catMaybes [passwordsMatch]
-                         }
+validSignupRequest :: PidgeonAction SignupRequest
+validSignupRequest = do
+    sr      <- getSignupRequest
+    mPerson <- runDB $ getBy (UniqueUsername $ T.toLower (srEmail sr))
 
-    case maybeNoErrors se of
-      Nothing      -> return sr
-      Just serrors -> do liftIO $ pPrint se
-                         lucid (signupPage (Just serrors) LoggedOut)
+    let se = [ if isNothing mPerson                         then Nothing else Just EmailAddressTaken
+             , if isValidEmail (srEmail sr)                 then Nothing else Just InvalidEmailAddress
+             , if validPasswordLength (srPassword sr)       then Nothing else Just PasswordTooShort
+             , if (srPassword sr) == (srPasswordConfirm sr) then Nothing else Just PasswordsDontMatch
+             ]
 
-
+    if null (catMaybes se)
+        then return sr
+        else do liftIO $ pPrint se
+                lucid (signupPage (Just $ catMaybes se) LoggedOut)
 
 ---------------------- Lucid stuff -----------------------
 -- TODO: move out of Main.hs

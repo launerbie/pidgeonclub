@@ -7,19 +7,18 @@ import Text.Email.Validate (isValid)
 import Data.Text.Encoding (encodeUtf8)
 
 -------------------------------- Forms -------------------------------------
-data SignupFormError = EmailAddressExists
+data SignupFormError = EmailAddressTaken
                      | InvalidEmailAddress
                      | PasswordTooShort
                      | PasswordsDontMatch
-                     deriving (Eq, Show)
+
+instance Show SignupFormError where
+  show EmailAddressTaken = "Email address is already taken"
+  show InvalidEmailAddress = "Email address is not valid"
+  show PasswordTooShort = "Password is too short"
+  show PasswordsDontMatch = "Passwords do not match"
 
 data PidgeonError = MissingParams deriving (Eq, Show)
-
-data SignupError = SignupError
-    { usernameError :: [String]
-    , passwordError :: [String]
-    , passwordErrorConfirm :: [String]
-    } deriving (Eq, Show)
 
 data SignupRequest = SignupRequest
     { srEmail :: T.Text
@@ -33,20 +32,6 @@ data LoginRequest = LoginRequest
     } deriving (Eq, Show)
 
 ------------------- Validation -----------------------------
-type ErrorMsg = String
-
-maybeNoErrors :: SignupError -> Maybe SignupError
-maybeNoErrors se = let x = length (usernameError se)
-                       y = length (passwordError se)
-                       z = length (passwordErrorConfirm se)
-                   in case x+y+z of
-                          0 -> Nothing
-                          _ -> Just se
-
-check :: (T.Text -> Bool) -> T.Text -> ErrorMsg -> Maybe ErrorMsg
-check f t m = if f t
-              then Nothing
-              else Just m
 
 validUsername :: T.Text -> Bool
 validUsername = T.all validChar
