@@ -228,21 +228,21 @@ getIP4 ipport = let s = show ipport
 
 getSignupRequest :: PidgeonAction SignupRequest
 getSignupRequest = do
-    mEmail <- param "email"
-    mPassword <- param "password"
-    mPasswordConf <- param "passwordConfirm"
-    let mSr = SignupRequest <$> mEmail <*> mPassword <*> mPasswordConf
+    ps <- params
+    let mSr = SignupRequest <$> lookup "email" ps
+                            <*> lookup "password" ps
+                            <*> lookup "passwordConfirm" ps
     case mSr of
       Just sr -> return sr
       Nothing -> text ("Oops, something went wrong with your request!")
 
 loginRequest :: PidgeonAction LoginRequest
 loginRequest = do
-    mEmail <- param "email"
-    mPassword <- param "password"
-    let lr = LoginRequest <$> mEmail <*> mPassword
-    case lr of
-      Just r -> return r
+    ps <- params
+    let mLR = LoginRequest <$> lookup "email" ps
+                           <*> lookup "password" ps
+    case mLR of
+      Just lr -> return lr
       Nothing -> text ("Oops, something went wrong with your request!")
 
 getPersonFromRequest :: LoginRequest -> PidgeonAction ((Key Person, Person))
