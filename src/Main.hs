@@ -131,12 +131,20 @@ app =  do
     get ("/user" <//> var) $ \user -> (lucid $ userPage user LoggedOut )
 
     -- The user's settings page
-    get "/profile" $ requireUser $ \u -> do
-        liftIO $ pPrint u
-        mPerson <- runDB $ PSQL.get u
-        case mPerson of
-            Just p -> lucid $ profilePage p LoggedIn
-            Nothing -> simpleText "user doesn't exist anymore"
+    get "/settings" $ requireUser $ \u -> do
+        redirect "/settings/profile"
+
+    get "/settings/profile" $ requireUser $ \u -> do
+        person <- getPerson u
+        lucid $ settingsPage person SettingsProfile LoggedIn
+
+    get "/settings/account" $ requireUser $ \u -> do
+        person <- getPerson u
+        lucid $ settingsPage person SettingsAccount LoggedIn
+
+    get "/settings/security" $ requireUser $ \u -> do
+        person <- getPerson u
+        lucid $ settingsPage person SettingsSecurity LoggedIn
 
     get "/login" $ do
         r <- readSession
@@ -196,10 +204,8 @@ requireUser action = do
 getUserFromSession :: SessieId -> PidgeonAction (Maybe PersonId)
 getUserFromSession sid = do
   mSid <- runDB $ PSQL.get sid -- :: Maybe Sessie
-  liftIO $ pPrint mSid
   case mSid of
       Just sess -> do
-          liftIO $ pPrint sess
           now <- liftIO getCurrentTime
           if sessieValidUntil sess > now
             then return $ Just (sessiePersonId sess)
@@ -207,6 +213,13 @@ getUserFromSession sid = do
       Nothing -> do
           writeSession Nothing
           simpleText ("Invalid session")
+
+getPerson :: PersonId -> PidgeonAction Person
+getPerson u = do
+   mPerson <- runDB $ PSQL.get u
+   case mPerson of
+       Just p -> return p
+       Nothing -> simpleText "user doesn't exist anymore"
 
 killSessions :: PersonId -> PidgeonAction ()
 killSessions personId = runDB $ deleteWhere [ SessiePersonId ==. personId ]

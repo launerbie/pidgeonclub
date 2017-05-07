@@ -14,6 +14,10 @@ import PidgeonClub.Lorem
 
 data LogStatus = LoggedOut | LoggedIn deriving (Eq,Show)
 
+data SettingsPage = SettingsAccount
+                  | SettingsProfile
+                  | SettingsSecurity deriving (Show)
+
 data NavEntry = NavEntry
   { navHref :: T.Text
   , navText :: T.Text
@@ -22,7 +26,7 @@ data NavEntry = NavEntry
 homeNav    = NavEntry "/" "Home"
 loginNav   = NavEntry "/login" "Login"
 logoutNav  = NavEntry "/logout" "Logout"
-profileNav = NavEntry "/profile" "Profile"
+settingsNav = NavEntry "/settings" "Settings"
 signupNav  = NavEntry "/signup" "Signup"
 
 data NavMenu = NavMenu [NavEntry] NavEntry deriving Show
@@ -31,7 +35,7 @@ defaultNavMenu :: NavEntry -> NavMenu
 defaultNavMenu active = NavMenu [homeNav, signupNav, loginNav] active
 
 userNavMenu :: NavEntry -> NavMenu
-userNavMenu active = NavMenu [homeNav, profileNav, logoutNav] active
+userNavMenu active = NavMenu [homeNav, settingsNav, logoutNav] active
 
 getNavMenu :: LogStatus -> NavEntry -> NavMenu
 getNavMenu s e = if s == LoggedIn
@@ -55,7 +59,7 @@ basePage nm@(NavMenu xs active) content=
 navigation :: NavMenu -> Html ()
 navigation (NavMenu xs active) = do
   nav_ [class_ "navbar navbar-inverse"] $ do
-     div_ [class_ "container"] $ do
+     div_ [class_ "container-fluid"] $ do
         div_ [class_ "navbar-header"] $ do
            button_ [class_ "navbar-toggle collapsed", type_ "button", data_ "toggle" "collapse", data_ "target" "#navbar"] $ do
                  span_ [class_ "sr-only"] "Toggle Navigation"
@@ -123,16 +127,37 @@ signupSuccessPage email s = basePage (getNavMenu s signupNav) $ do
      p_ $ toHtml $ "An activation mail has been sent to: " <> email
      p_ $ a_ [href_ "/"] "Click here to go back"
 
+settingsPage :: Person -> SettingsPage -> LogStatus -> Html ()
+settingsPage p settings s = basePage (getNavMenu s settingsNav) $ do
+  div_ [class_ "container-fluid"] $ do
+     div_ [class_ "row"] $ do
+        div_ [class_ "col-sm-2"] $ do
+           div_ [class_ "panel panel-default"] $ do
+              div_ [class_ "panel-heading"] "Settings"
+              div_ [class_ "panel-body"] $ a_ [href_ "/settings/profile"] "Profile"
+              div_ [class_ "panel-body"] $ a_ [href_ "/settings/account"] "Account"
+              div_ [class_ "panel-body"] $ a_ [href_ "/settings/security"] "Security"
+        div_ [class_ "col-sm-6"] $ do
+           case settings of
+               SettingsProfile  -> settingsProfilePage p
+               SettingsAccount  -> settingsAccountPage p
+               SettingsSecurity -> settingsSecurityPage p
 
-profilePage :: Person -> LogStatus -> Html ()
-profilePage p s = basePage (getNavMenu s profileNav) $ do
-  div_ [class_ "container"] $ do
+settingsProfilePage :: Person -> Html ()
+settingsProfilePage p = do
      p_ $ toHtml $ personEmail p
      p_ $ toHtml $ personPassword p
      p_ $ toHtml $ personSalt p
 
+settingsAccountPage :: Person -> Html ()
+settingsAccountPage p = undefined
+
+settingsSecurityPage :: Person -> Html ()
+settingsSecurityPage p = undefined
+
+
 userPage :: String -> LogStatus -> Html ()
-userPage email s = basePage (getNavMenu s profileNav) $ do
+userPage email s = basePage (getNavMenu s homeNav) $ do
   div_ [class_ "container"] $ do
      p_ $ toHtml email
 
@@ -153,9 +178,6 @@ makeRow3 (a,b,c) = tr_ $ do
                   td_ (toHtml a)
                   td_ (toHtml b)
                   td_ (toHtml c)
-
-emptyDiv :: String -> Html ()
-emptyDiv t = div_ [class_ "container"] (p_ $ toHtml t)
 
 -- ######################## Forms #################################
 signupForm :: Maybe [SignupFormError] -> Html ()
