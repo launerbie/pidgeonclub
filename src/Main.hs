@@ -142,6 +142,12 @@ app =  do
         person <- getPerson u
         lucid $ settingsPage person SettingsAccount LoggedIn
 
+    post "settings/account" $ requireUser $ \u -> do
+        (currentpass, newpass, newpassconfirm) <- changePasswordRequest
+        checkPassword u currentpass
+        updatePassword u newpass newpassconfirm
+        simpleText "Your password has been changed."
+
     get "/settings/security" $ requireUser $ \u -> do
         person <- getPerson u
         lucid $ settingsPage person SettingsSecurity LoggedIn
@@ -159,7 +165,7 @@ app =  do
     post "/login" $ do
         lr                 <- loginRequest
         (personId, person) <- getPersonFromRequest lr
-        (salt, hash)       <- return (personSalt person, personPassword person)
+        let (salt, hash) = (personSalt person, personPassword person)
         if hash == (makeHex $ hashPassword (lrPassword lr) (decodeHex $ salt))
             then loginUser personId
             else simpleText ("Invalid email or password")
@@ -227,18 +233,6 @@ killSessions personId = runDB $ deleteWhere [ SessiePersonId ==. personId ]
 insertPerson :: Person -> PidgeonAction (Key Person)
 insertPerson p = runDB $ insert p
 
-showRequest :: PidgeonAction ()
-showRequest = do
-    r <- request
-    p <- params
-    liftIO $ do pPrint r
-                print p
-
--- TODO: Move out of Main.hs
-getIP4 :: SockAddr -> String
-getIP4 ipport = let s = show ipport
-               in takeWhile (/= ':') s
-
 getSignupRequest :: PidgeonAction SignupRequest
 getSignupRequest = do
     ps <- params
@@ -269,11 +263,9 @@ getPersonFromRequest lr = do
 
 mkPerson :: SignupRequest -> PidgeonAction Person
 mkPerson sr = do
-  g <- liftIO $ newStdGen
-  let salt = randomBS 16 g
-      hash = hashPassword (srPassword sr) salt
-      mail = T.toLower (srEmail sr)
+  (salt, hash) <- mkNewSaltAndHash (srPassword sr)
   return $ Person mail (makeHex hash) (makeHex salt) Nothing
+  where mail = T.toLower (srEmail sr)
 
 validSignupRequest :: PidgeonAction SignupRequest
 validSignupRequest = do
@@ -290,6 +282,52 @@ validSignupRequest = do
         then return sr
         else do liftIO $ pPrint se
                 lucid (signupPage (Just $ catMaybes se) LoggedOut)
+
+changePasswordRequest ::PidgeonAction (T.Text, T.Text, T.Text)
+changePasswordRequest = do
+  ps <- params
+  let mReq = (,,) <$> lookup "currentpassword" ps
+                  <*> lookup "newpassword" ps
+                  <*> lookup "newpasswordC" ps
+  case mReq of
+      Just r -> return r
+      Nothing -> text ("Oops, something went wrong with your request!")
+
+checkPassword :: PersonId -> T.Text -> PidgeonAction ()
+checkPassword u p = do
+    person        <- getPerson u
+    let (salt, hash) = (personSalt person, personPassword person)
+    if hash == (makeHex $ hashPassword p (decodeHex $ salt))
+        then return ()
+        else simpleText ("Invalid email or password")
+
+updatePassword :: PersonId -> T.Text -> T.Text -> PidgeonAction ()
+updatePassword u p1 p2 = do
+  (salt, hash) <- mkNewSaltAndHash p1
+  if p1 == p2
+      then runDB $ update u [ PersonPassword =. (makeHex hash)
+                            , PersonSalt =. (makeHex salt)]
+      else simpleText "Passwords don't match"
+
+mkNewSaltAndHash :: T.Text -> PidgeonAction (BS.ByteString, BS.ByteString)
+mkNewSaltAndHash password = do
+  g <- liftIO $ newStdGen
+  let salt = randomBS 16 g
+      hash = hashPassword password salt
+  return (salt, hash)
+
+showRequest :: PidgeonAction ()
+showRequest = do
+    r <- request
+    p <- params
+    liftIO $ do pPrint r
+                print p
+
+-- TODO: Move out of Main.hs
+getIP4 :: SockAddr -> String
+getIP4 ipport = let s = show ipport
+               in takeWhile (/= ':') s
+
 
 ---------------------- Lucid stuff -----------------------
 -- TODO: move out of Main.hs
