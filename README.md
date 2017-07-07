@@ -11,14 +11,19 @@ Postgresql stuff
 
 Create a role with the same name under which `pidgeonclub` will be executed with:
 ```bash
-createuser --interactive
-createdb myDatabasename
+sudo -u postgres createuser -s -e myDbUser
+sudo -u postgres createdb myDatabasename
 ```
 Then connect to the database:
 ```bash
 psql -d myDatabasename
 ```
 and set a password with postgres command `\password`.
+
+Alternatively, myDbUser's password can be set with:
+```bash
+sudo -u postgres createuser -P -s -e myDbUser
+```
 
 Compile pidgeonclub
 -------------------
