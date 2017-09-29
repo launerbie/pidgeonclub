@@ -148,6 +148,11 @@ app =  do
         updatePassword u newpass newpassconfirm
         simpleText "Your password has been changed."
 
+    get "/loginhistory" $ requireUser $ \u -> do
+        person <- getPerson u
+        logins <- runDB $ selectList [LoginPersonId ==. u] []
+        lucid $ loginHistoryPage (map entityVal logins) LoggedIn
+
     get "/settings/security" $ requireUser $ \u -> do
         person <- getPerson u
         lucid $ settingsPage person SettingsSecurity LoggedIn
@@ -189,8 +194,10 @@ app =  do
 loginUser :: PersonId -> PidgeonAction ()
 loginUser personId = do
   ip       <- fmap (T.pack . getIP4 . remoteHost) request
+  utctime  <- liftIO $ getCurrentTime
   validTil <- liftIO $ liftM (addUTCTime 3600) getCurrentTime
   sid      <- runDB $ do deleteWhere [ SessiePersonId ==. personId ]
+                         insert (Login utctime ip personId)
                          insert (Sessie validTil personId ip)
                          --TODO: save unixtime
   writeSession (Just sid)

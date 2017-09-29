@@ -44,4 +44,9 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
     time UTCTime
     package PackageId
     deriving Show
+  Login
+    time UTCTime
+    ipaddress T.Text
+    personId PersonId
+    deriving Show
 |]

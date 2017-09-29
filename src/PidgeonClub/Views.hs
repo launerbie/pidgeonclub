@@ -16,7 +16,9 @@ data LogStatus = LoggedOut | LoggedIn deriving (Eq,Show)
 
 data SettingsPage = SettingsAccount
                   | SettingsProfile
-                  | SettingsSecurity deriving (Show)
+                  | SettingsSecurity 
+                  | SettingsLoginHistory 
+                  deriving (Show)
 
 data NavEntry = NavEntry
   { navHref :: T.Text
@@ -169,6 +171,15 @@ settingsAccountPage p = do
 settingsSecurityPage :: Person -> Html ()
 settingsSecurityPage p = undefined
 
+loginHistoryPage :: [Login] -> LogStatus -> Html ()
+loginHistoryPage ls s = basePage (getNavMenu s homeNav) $ do  
+  let loginToRow = \l -> (T.pack . show $ loginTime l, loginIpaddress l)
+  div_ [class_ "container"] $ do
+     table_ [class_ "table table-bordered"] $ do
+          tr_ $ do
+            th_ "Time"
+            th_ "IP Address"
+          mapM_ (makeRow2 . loginToRow) ls
 
 userPage :: String -> LogStatus -> Html ()
 userPage email s = basePage (getNavMenu s homeNav) $ do
@@ -192,6 +203,11 @@ makeRow3 (a,b,c) = tr_ $ do
                   td_ (toHtml a)
                   td_ (toHtml b)
                   td_ (toHtml c)
+
+makeRow2 :: (T.Text, T.Text) -> Html ()
+makeRow2 (a,b) = tr_ $ do
+                  td_ (toHtml a)
+                  td_ (toHtml b)
 
 -- ######################## Forms #################################
 signupForm :: Maybe [SignupFormError] -> Html ()
