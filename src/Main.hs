@@ -279,10 +279,18 @@ validSignupRequest = do
     sr      <- getSignupRequest
     mPerson <- runDB $ getBy (UniqueUsername $ T.toLower (srEmail sr))
 
-    let se = [ if isNothing mPerson                         then Nothing else Just EmailAddressTaken
-             , if isValidEmail (srEmail sr)                 then Nothing else Just InvalidEmailAddress
-             , if validPasswordLength (srPassword sr)       then Nothing else Just PasswordTooShort
-             , if (srPassword sr) == (srPasswordConfirm sr) then Nothing else Just PasswordsDontMatch
+    let se = [ if isNothing mPerson
+                 then Nothing
+                 else Just EmailAddressTaken
+             , if isValidEmail (srEmail sr)
+                 then Nothing
+                 else Just InvalidEmailAddress
+             , if validPasswordLength (srPassword sr)
+                 then Nothing
+                 else Just PasswordTooShort
+             , if (srPassword sr) == (srPasswordConfirm sr)
+                 then Nothing
+                 else Just PasswordsDontMatch
              ]
 
     if null (catMaybes se)
