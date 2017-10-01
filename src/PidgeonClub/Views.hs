@@ -156,18 +156,19 @@ settingsAccountPage :: Person -> Html ()
 settingsAccountPage p = do
     h3_ "Change Password"
     hr_ []
-    form_ [class_ "form-horizontal", method_ "post", action_ "/settings/account"] $ do
-        div_ [class_ "form-group"] $ do
-           label_ [for_ "currentpassword", class_ "control-label"] "Current password: "
-           input_ [type_ "password", class_ "form-control", name_ "currentpassword"]
-        div_ [class_ "form-group"] $ do
-           label_ [for_ "newpassword", class_ "control-label"] "New password: "
-           input_ [type_ "password", class_ "form-control", name_ "newpassword"]
-        div_ [class_ "form-group"] $ do
-           label_ [for_ "newpasswordC", class_ "control-label"] "Confirm new password: "
-           input_ [type_ "password", class_ "form-control", name_ "newpasswordC"]
-        div_ [class_ "form-group"] $ do
-           button_ [type_ "submit", class_ "btn btn-success"] "Change password"
+    div_ [class_ "container"] $ do
+       form_ [class_ "form-horizontal", method_ "post", action_ "/settings/account"] $ do
+           div_ [class_ "form-group"] $ do
+              label_ [for_ "currentpassword", class_ "control-label"] "Current password: "
+              input_ [type_ "password", class_ "form-control", name_ "currentpassword"]
+           div_ [class_ "form-group"] $ do
+              label_ [for_ "newpassword", class_ "control-label"] "New password: "
+              input_ [type_ "password", class_ "form-control", name_ "newpassword"]
+           div_ [class_ "form-group"] $ do
+              label_ [for_ "newpasswordC", class_ "control-label"] "Confirm new password: "
+              input_ [type_ "password", class_ "form-control", name_ "newpasswordC"]
+           div_ [class_ "form-group"] $ do
+              button_ [type_ "submit", class_ "btn btn-success"] "Change password"
 
 settingsSecurityPage :: Person -> Html ()
 settingsSecurityPage p = undefined
