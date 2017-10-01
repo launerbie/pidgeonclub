@@ -16,8 +16,8 @@ data LogStatus = LoggedOut | LoggedIn deriving (Eq,Show)
 
 data SettingsPage = SettingsAccount
                   | SettingsProfile
-                  | SettingsSecurity 
-                  | SettingsLoginHistory 
+                  | SettingsSecurity
+                  | SettingsLoginHistory
                   deriving (Show)
 
 data NavEntry = NavEntry
@@ -25,11 +25,12 @@ data NavEntry = NavEntry
   , navText :: T.Text
   } deriving (Eq, Show)
 
-homeNav    = NavEntry "/" "Home"
-loginNav   = NavEntry "/login" "Login"
-logoutNav  = NavEntry "/logout" "Logout"
-settingsNav = NavEntry "/settings" "Settings"
-signupNav  = NavEntry "/signup" "Signup"
+homeNav      = NavEntry "/" "Home"
+loginNav     = NavEntry "/login" "Login"
+logoutNav    = NavEntry "/logout" "Logout"
+settingsNav  = NavEntry "/settings" "Settings"
+signupNav    = NavEntry "/signup" "Signup"
+loginHistNav = NavEntry "/loginhistory" "Login History"
 
 data NavMenu = NavMenu [NavEntry] NavEntry deriving Show
 
@@ -37,7 +38,7 @@ defaultNavMenu :: NavEntry -> NavMenu
 defaultNavMenu active = NavMenu [homeNav, signupNav, loginNav] active
 
 userNavMenu :: NavEntry -> NavMenu
-userNavMenu active = NavMenu [homeNav, settingsNav, logoutNav] active
+userNavMenu active = NavMenu [ homeNav, loginHistNav, settingsNav, logoutNav] active
 
 getNavMenu :: LogStatus -> NavEntry -> NavMenu
 getNavMenu s e = if s == LoggedIn
@@ -172,7 +173,7 @@ settingsSecurityPage :: Person -> Html ()
 settingsSecurityPage p = undefined
 
 loginHistoryPage :: [Login] -> LogStatus -> Html ()
-loginHistoryPage ls s = basePage (getNavMenu s homeNav) $ do  
+loginHistoryPage ls s = basePage (getNavMenu s loginHistNav) $ do
   let loginToRow = \l -> (T.pack . show $ loginTime l, loginIpaddress l)
   div_ [class_ "container"] $ do
      table_ [class_ "table table-bordered"] $ do

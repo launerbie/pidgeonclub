@@ -148,14 +148,14 @@ app =  do
         updatePassword u newpass newpassconfirm
         simpleText "Your password has been changed."
 
+    get "/settings/security" $ requireUser $ \u -> do
+        person <- getPerson u
+        lucid $ settingsPage person SettingsSecurity LoggedIn
+
     get "/loginhistory" $ requireUser $ \u -> do
         person <- getPerson u
         logins <- runDB $ selectList [LoginPersonId ==. u] []
         lucid $ loginHistoryPage (map entityVal logins) LoggedIn
-
-    get "/settings/security" $ requireUser $ \u -> do
-        person <- getPerson u
-        lucid $ settingsPage person SettingsSecurity LoggedIn
 
     get "/login" $ do
         r <- readSession
