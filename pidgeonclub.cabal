@@ -46,6 +46,8 @@ executable pidgeonclub
                      , unix-time
                      , wai
                      , wai-middleware-static
+                     , warp
+                     , warp-tls
                      , word8
   other-modules:       PidgeonClub.Forms
                      , PidgeonClub.Views

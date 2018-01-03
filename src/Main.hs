@@ -36,9 +36,12 @@ import Database.Persist.Sql hiding (get)
 import qualified Database.Persist.Sql as PSQL
 import Database.Persist.TH
 
+import Network.Wai.Handler.WarpTLS 
+import Network.Wai.Handler.Warp
+
 ----------------- Spock -----------------------
 import Web.Spock ( get, post, HasSpock, lazyBytes, middleware
-                 , redirect, runSpock, spock, SpockCtxM, SpockConn, ActionCtxT
+                 , redirect, runSpock, spockAsApp, spock, SpockCtxM, SpockConn, ActionCtxT
                  , SpockActionCtx, root, runQuery, text, var
                  , (<//>) )
 
@@ -72,7 +75,11 @@ main = do
   -- defaultSpockCfg :: sess -> PoolOrConn conn -> st -> IO (SpockCfg conn sess st)
   cfg <- defaultSpockCfg (Nothing) pool (AppState sitecfg)
   -- TODO: get port from cmd argument
-  runSpock 8080 (spock cfg app)
+  --runSpock 8080 (spock cfg app)
+  application <- spockAsApp $ spock cfg app
+  let tls = (tlsSettings "certificate.pem" "key.pem")
+  let settings = (setPort 443 defaultSettings)
+  runTLS tls settings application
 
 dbpool :: PidgeonConfig -> IO (PoolOrConn SqlBackend)
 dbpool pcfg = do
