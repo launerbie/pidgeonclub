@@ -31,13 +31,14 @@ logoutNav    = NavEntry "/logout" "Logout"
 settingsNav  = NavEntry "/settings" "Settings"
 signupNav    = NavEntry "/signup" "Signup"
 loginHistNav = NavEntry "/loginhistory" "Login History"
+allUsersNav  = NavEntry "/allusers" "Users"
 
 data NavMenu = NavMenu [NavEntry] NavEntry deriving Show
 
 getNavMenu :: LogStatus -> NavEntry -> NavMenu
 getNavMenu s active =
   if s == LoggedIn
-  then NavMenu [ homeNav, loginHistNav, settingsNav, logoutNav] active
+  then NavMenu [ homeNav, allUsersNav, loginHistNav, settingsNav, logoutNav] active
   else NavMenu [ homeNav, signupNav, loginNav] active
 
 -- ################ Common for all pages #######################
@@ -184,7 +185,7 @@ userPage email s = basePage (getNavMenu s homeNav) $ do
      p_ $ toHtml email
 
 allUsersPage :: [Person] -> LogStatus -> Html ()
-allUsersPage xs s = basePage (getNavMenu s homeNav) $ do
+allUsersPage xs s = basePage (getNavMenu s allUsersNav) $ do
   let personToRow = \p -> (personEmail p, personPassword p, personSalt p)
   div_ [class_ "container"] $ do
      table_ [class_ "table table-bordered"] $ do
@@ -274,7 +275,6 @@ scripts :: Html ()
 scripts = do
   script_ [src_ "https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"] ""
   script_ [src_ "/js/bootstrap.min.js"] ""
-
 
 alert :: [String] -> Html ()
 alert [] = mempty
