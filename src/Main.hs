@@ -36,7 +36,7 @@ import Database.Persist.Sql hiding (get)
 import qualified Database.Persist.Sql as PSQL
 import Database.Persist.TH
 
-import Network.Wai.Handler.WarpTLS 
+import Network.Wai.Handler.WarpTLS
 import Network.Wai.Handler.Warp
 
 ----------------- Spock -----------------------
@@ -357,7 +357,7 @@ lucid :: MonadIO m => Html a1 -> ActionCtxT ctx m a
 lucid = lazyBytes . renderBS
 
 simpleText :: MonadIO m => T.Text -> ActionCtxT ctx m a
-simpleText x = lucid (simplePage x LoggedOut)
+simpleText x = lucid (simplePage x LoggedOut)  -- TODO: Handle logged out case.
 ---------------------- Persistent ------------------------
 -- TODO: move out of Main.hs
 runDB :: (HasSpock m, SpockConn m ~ SqlBackend) =>

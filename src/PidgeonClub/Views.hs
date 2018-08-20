@@ -32,13 +32,21 @@ settingsNav  = NavEntry "/settings" "Settings"
 signupNav    = NavEntry "/signup" "Signup"
 loginHistNav = NavEntry "/loginhistory" "Login History"
 allUsersNav  = NavEntry "/allusers" "Users"
+pidgeonsNav  = NavEntry "/pidgeons" "Pidgeons"
+newPidgeonNav  = NavEntry "/newpidgeon" "Add a pidgeon"
 
 data NavMenu = NavMenu [NavEntry] NavEntry deriving Show
 
 getNavMenu :: LogStatus -> NavEntry -> NavMenu
 getNavMenu s active =
   if s == LoggedIn
-  then NavMenu [ homeNav, allUsersNav, loginHistNav, settingsNav, logoutNav] active
+  then NavMenu [ homeNav
+               , newPidgeonNav
+               , pidgeonsNav
+               , allUsersNav
+               , loginHistNav
+               , settingsNav
+               , logoutNav] active
   else NavMenu [ homeNav, signupNav, loginNav] active
 
 -- ################ Common for all pages #######################
