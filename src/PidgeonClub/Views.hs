@@ -34,16 +34,11 @@ loginHistNav = NavEntry "/loginhistory" "Login History"
 
 data NavMenu = NavMenu [NavEntry] NavEntry deriving Show
 
-defaultNavMenu :: NavEntry -> NavMenu
-defaultNavMenu active = NavMenu [homeNav, signupNav, loginNav] active
-
-userNavMenu :: NavEntry -> NavMenu
-userNavMenu active = NavMenu [ homeNav, loginHistNav, settingsNav, logoutNav] active
-
 getNavMenu :: LogStatus -> NavEntry -> NavMenu
-getNavMenu s e = if s == LoggedIn
-                 then userNavMenu e
-                 else defaultNavMenu e
+getNavMenu s active =
+  if s == LoggedIn
+  then NavMenu [ homeNav, loginHistNav, settingsNav, logoutNav] active
+  else NavMenu [ homeNav, signupNav, loginNav] active
 
 -- ################ Common for all pages #######################
 basePage :: NavMenu -> Html () -> Html ()
@@ -199,18 +194,6 @@ allUsersPage xs s = basePage (getNavMenu s homeNav) $ do
             th_ "Salt"
           mapM_ (makeRow3 . personToRow) xs
 
--- Generalize to makeRow :: nrRows -> [T.Text] -> Html () ?
-makeRow3 :: (T.Text, T.Text, T.Text) -> Html ()
-makeRow3 (a,b,c) = tr_ $ do
-                  td_ (toHtml a)
-                  td_ (toHtml b)
-                  td_ (toHtml c)
-
-makeRow2 :: (T.Text, T.Text) -> Html ()
-makeRow2 (a,b) = tr_ $ do
-                  td_ (toHtml a)
-                  td_ (toHtml b)
-
 -- ######################## Forms #################################
 signupForm :: Maybe [SignupFormError] -> Html ()
 signupForm mErr = do
@@ -309,4 +292,16 @@ cellspacing_ = makeAttribute "cellspacing"
 
 cellpadding_ :: T.Text -> Attribute
 cellpadding_ = makeAttribute "cellpadding_"
+
+-- Generalize to makeRow :: nrRows -> [T.Text] -> Html () ?
+makeRow3 :: (T.Text, T.Text, T.Text) -> Html ()
+makeRow3 (a,b,c) = tr_ $ do
+                  td_ (toHtml a)
+                  td_ (toHtml b)
+                  td_ (toHtml c)
+
+makeRow2 :: (T.Text, T.Text) -> Html ()
+makeRow2 (a,b) = tr_ $ do
+                  td_ (toHtml a)
+                  td_ (toHtml b)
 
