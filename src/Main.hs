@@ -321,7 +321,7 @@ checkPassword u p = do
     let (salt, hash) = (personSalt person, personPassword person)
     if hash == (makeHex $ hashPassword p (decodeHex $ salt))
         then return ()
-        else simpleText ("Invalid email or password")
+        else simpleText ("Incorrect current password")
 
 updatePassword :: PersonId -> T.Text -> T.Text -> PidgeonAction ()
 updatePassword u p1 p2 = do
@@ -353,11 +353,15 @@ getIP4 ipport = let s = show ipport
 
 ---------------------- Lucid stuff -----------------------
 -- TODO: move out of Main.hs
-lucid :: MonadIO m => Html a1 -> ActionCtxT ctx m a
+lucid :: Html a1 -> PidgeonAction a
 lucid = lazyBytes . renderBS
 
-simpleText :: MonadIO m => T.Text -> ActionCtxT ctx m a
-simpleText x = lucid (simplePage x LoggedOut)  -- TODO: Handle logged out case.
+simpleText :: T.Text -> PidgeonAction a
+simpleText x = do
+        r <- readSession
+        case r of
+            Nothing -> lucid (simplePage x LoggedOut)  -- TODO: Handle logged out case.
+            Just sess -> lucid (simplePage x LoggedIn)
 ---------------------- Persistent ------------------------
 -- TODO: move out of Main.hs
 runDB :: (HasSpock m, SpockConn m ~ SqlBackend) =>
