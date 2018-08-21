@@ -137,6 +137,17 @@ app =  do
     -- Display some publicly available information on the user on this page
     get ("/user" <//> var) $ \user -> (lucid $ userPage user LoggedOut )
 
+    get "/newpidgeon" $ requireUser $ \u -> do
+        r <- readSession
+        case r of
+            Just sess -> lucid (addNewPidgeonPage Nothing LoggedIn)
+            Nothing -> lucid (addNewPidgeonPage Nothing LoggedOut)
+
+    post "/newpidgeon" $ requireUser $ \u -> do undefined
+
+    get "/pidgeons" $ requireUser $ \u -> do
+        simpleText "List all pidgeons here."
+
     -- The user's settings page
     get "/settings" $ requireUser $ \u -> do
         redirect "/settings/profile"

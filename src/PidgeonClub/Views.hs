@@ -128,6 +128,9 @@ resetPage s = basePage (getNavMenu s homeNav) resetPassForm
 signupPage :: Maybe [SignupFormError] -> LogStatus -> Html ()
 signupPage mErr s = basePage (getNavMenu s signupNav) (signupForm mErr)
 
+addNewPidgeonPage :: Maybe [NewPidgeonFormError] -> LogStatus -> Html ()
+addNewPidgeonPage mErr s = basePage (getNavMenu s signupNav) (addNewPidgeonForm mErr)
+
 signupSuccessPage :: T.Text -> LogStatus -> Html ()
 signupSuccessPage email s = basePage (getNavMenu s signupNav) $ do
   div_ [class_ "container"] $ do
@@ -255,6 +258,37 @@ loginForm = do
            div_ [class_ "container"] $ do
               p_ $ do "Don't have an account? "
                       a_ [href_ "/signup" ] "Click here to become a pidgeon!"
+
+addNewPidgeonForm :: Maybe [NewPidgeonFormError] -> Html ()
+addNewPidgeonForm mErr = do
+  div_ [class_ "container"] $ do
+     div_ [class_ "panel panel-default"] $ do
+        div_ [class_ "panel-heading"] "Add new Pidgeon!"
+        div_ [class_ "panel-body"] $ do
+           form_ [class_ "form-horizontal", method_ "post", action_ "/newpidgeon"] $ do
+               div_ [class_ "form-group"] $ do
+                  label_ [for_ "name", class_ "col-sm-2 control-label"] "Name: "
+                  div_ [class_ "col-sm-4"] $ do
+                     input_ [type_ "text", class_ "form-control", name_ "name"]
+               div_ [class_ "form-group"] $ do
+                  label_ [for_ "height", class_ "col-sm-2 control-label"] "Height: "
+                  div_ [class_ "col-sm-4"] $ do
+                     input_ [type_ "text", class_ "form-control", name_ "height"]
+               div_ [class_ "form-group"] $ do
+                  label_ [for_ "color", class_ "col-sm-2 control-label"] "Color: "
+                  div_ [class_ "col-sm-4"] $ do
+                     input_ [type_ "text", class_ "form-control", name_ "color"]
+               div_ [class_ "form-group"] $ do
+                  label_ [for_ "", class_ "col-sm-2 control-label"] "Weight: "
+                  div_ [class_ "col-sm-4"] $ do
+                     input_ [type_ "text", class_ "form-control", name_ "weight"]
+               div_ [class_ "form-group"] $ do
+                  div_ [class_ "col-sm-offset-2 col-sm-4"] $ do
+                     button_ [type_ "submit", class_ "btn btn-success"] "Register pidgeon"
+                     -- Form errors
+                     case mErr of
+                         Just e -> alert $ map show e
+                         Nothing -> mempty
 
 resetPassForm :: Html ()
 resetPassForm = do
