@@ -3,6 +3,8 @@
 {-# LANGUAGE ExtendedDefaultRules #-}
 module PidgeonClub.Views where
 
+import Control.Monad.Trans.Class
+import Control.Monad.Trans.Reader
 import Data.Monoid ((<>))
 import qualified Data.Text as T
 import Lucid
@@ -24,6 +26,8 @@ data NavEntry = NavEntry
   { navHref :: T.Text
   , navText :: T.Text
   } deriving (Eq, Show)
+
+type HtmlHandler = ReaderT (LogStatus, NavMenu) Html ()
 
 homeNav      = NavEntry "/" "Home"
 loginNav     = NavEntry "/login" "Login"
@@ -49,6 +53,18 @@ getNavMenu s active =
                , logoutNav] active
   else NavMenu [ homeNav, signupNav, loginNav] active
 
+getNavMenu2 :: LogStatus -> NavEntry -> NavMenu
+getNavMenu2 s active =
+  if s == LoggedIn
+  then NavMenu [ homeNav
+               , newPidgeonNav
+               , pidgeonsNav
+               , allUsersNav
+               , loginHistNav
+               , settingsNav
+               , logoutNav] active
+  else NavMenu [ homeNav, signupNav, loginNav] active
+
 -- ################ Common for all pages #######################
 basePage :: NavMenu -> Html () -> Html ()
 basePage nm@(NavMenu xs active) content=
@@ -62,6 +78,30 @@ basePage nm@(NavMenu xs active) content=
           content
           footer
           scripts
+
+basePage2 :: Html () -> HtmlHandler
+basePage2 content = do
+  (logstat, nm@(NavMenu xs active)) <- ask
+  lift $ do
+      html_ [lang_ "en"] $ do
+          head_ $ do
+              title_ (toHtml $ (navText active) <> " | Pidgeon Club")
+              meta_ [name_ "viewport", content_ "width=device-width, initial-scale=1"]
+              link_ [rel_ "stylesheet",type_ "text/css",href_ "/css/bootstrap.min.css"]
+          body_ $ do
+              navigation nm
+              content
+              footer
+              scripts
+
+simplePage2 :: T.Text -> HtmlHandler
+simplePage2 x = basePage2 $ do
+  div_ [class_ "container"] $ do
+      (p_ $ toHtml x)
+
+loginPage2 :: Maybe Person -> HtmlHandler
+loginPage2 (Just p) = basePage2 $ do (alreadyLoggedInPage p)
+loginPage2 Nothing = basePage2 $ do loginForm
 
 navigation :: NavMenu -> Html ()
 navigation (NavMenu xs active) = do
@@ -102,6 +142,7 @@ homePage s = basePage (getNavMenu s homeNav) $ do
 
       (h1_ "Pidgem Pidgus")
       (p_ $ toHtml lorem5)
+
 
 simplePage :: T.Text -> LogStatus -> Html ()
 simplePage x s = basePage (getNavMenu s homeNav) $ do

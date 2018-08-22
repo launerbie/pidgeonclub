@@ -53,6 +53,7 @@ executable pidgeonclub
                      , PidgeonClub.Views
                      , PidgeonClub.Types
                      , PidgeonClub.Actions
+                     , PidgeonClub.Lorem
   default-language:    Haskell2010
 
 
