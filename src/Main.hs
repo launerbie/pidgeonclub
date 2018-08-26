@@ -7,6 +7,7 @@ import Control.Monad        (liftM, when, unless, guard)
 import Control.Monad.Trans  (lift, MonadIO, liftIO)
 import Control.Monad.Trans.Resource  (ResourceT, runResourceT)
 import Control.Monad.Trans.Maybe
+import Control.Monad.Trans.Reader
 import Control.Monad.Logger    (runNoLoggingT, runStderrLoggingT, NoLoggingT)
 import Data.Char (toLower)
 import Data.Word8 hiding (toLower)
@@ -55,18 +56,6 @@ import PidgeonClub.Views
 import PidgeonClub.Types
 import PidgeonClub.Forms
 
-data PidgeonConfig = PidgeonConfig
-    { dbHost :: HostName
-    , dbPort :: Int
-    , dbName :: String
-    , dbUser :: String
-    , dbPass :: String
-    } deriving (Show)
-
-data AppState = AppState {getCfg :: PidgeonConfig}
-type AppSession = Maybe SessieId
-type PidgeonApp ctx a = SpockCtxM ctx SqlBackend AppSession AppState a
-type PidgeonAction = SpockActionCtx () SqlBackend AppSession AppState
 
 main :: IO ()
 main = do
@@ -109,39 +98,34 @@ app :: PidgeonApp () ()
 app =  do
     middleware (staticPolicy (addBase "static"))
 
-    get "/" $ do
-        r <- readSession
-        case r of
-            Just sess -> lucid $ homePage LoggedIn
-            Nothing -> lucid $ homePage LoggedOut
+    get "/test" $ do lucid testPage
 
-    get "/signup" $ do
-        r <- readSession
-        case r of
-            Just sess -> lucid (signupPage Nothing LoggedIn)
-            Nothing -> lucid (signupPage Nothing LoggedOut)
+    --get "/testrequirelogin" $ requireUser $ \_ -> do
+    --    (runReaderT $ testPage) "x" >>= renderPage
+
+    get "/" $ lucid homePage
+
+    get "/signup" $ lucid (signupPage Nothing)
 
     post "/signup" $ do
         sr <- validSignupRequest
         p  <- mkPerson sr
         insertPerson p
-        lucid $ signupSuccessPage (srEmail sr) LoggedOut
+        lucid $ signupSuccessPage (srEmail sr)
 
     -- TODO: Make accessible only for admins
     get "/allusers" $ requireUser $ \_ -> do
         users <- runDB $ selectList [] [Asc PersonEmail] -- [Entity record]
         let persons = map entityVal users
-        lucid $ allUsersPage persons LoggedIn
+        lucid $ allUsersPage persons
 
     -- The user's public page
     -- Display some publicly available information on the user on this page
-    get ("/user" <//> var) $ \user -> (lucid $ userPage user LoggedOut )
+    get ("/user" <//> var) $ \user -> lucid $ userPage user
 
     get "/newpidgeon" $ requireUser $ \u -> do
-        r <- readSession
-        case r of
-            Just sess -> lucid (addNewPidgeonPage Nothing LoggedIn)
-            Nothing -> lucid (addNewPidgeonPage Nothing LoggedOut)
+         lucid (addNewPidgeonPage Nothing)
+         lucid (addNewPidgeonPage Nothing)
 
     post "/newpidgeon" $ requireUser $ \u -> do undefined
 
@@ -154,11 +138,11 @@ app =  do
 
     get "/settings/profile" $ requireUser $ \u -> do
         person <- getPerson u
-        lucid $ settingsPage person SettingsProfile LoggedIn
+        lucid $ settingsPage person SettingsProfile
 
     get "/settings/account" $ requireUser $ \u -> do
         person <- getPerson u
-        lucid $ settingsPage person SettingsAccount LoggedIn
+        lucid $ settingsPage person SettingsAccount
 
     post "settings/account" $ requireUser $ \u -> do
         (currentpass, newpass, newpassconfirm) <- changePasswordRequest
@@ -168,21 +152,21 @@ app =  do
 
     get "/settings/security" $ requireUser $ \u -> do
         person <- getPerson u
-        lucid $ settingsPage person SettingsSecurity LoggedIn
+        lucid $ settingsPage person SettingsSecurity
 
     get "/loginhistory" $ requireUser $ \u -> do
         person <- getPerson u
         logins <- runDB $ selectList [LoginPersonId ==. u] []
-        lucid $ loginHistoryPage (map entityVal logins) LoggedIn
+        lucid $ loginHistoryPage (map entityVal logins)
 
     get "/login" $ do
         r <- readSession
         case r of
-            Nothing -> lucid $ loginPage Nothing LoggedOut
+            Nothing -> lucid $ loginPage Nothing
             Just sess -> requireUser $ \u -> do
                 mPerson <- runDB $ PSQL.get u
                 case mPerson of
-                    Just u -> lucid $ loginPage (Just u) LoggedIn
+                    Just u -> lucid $ loginPage (Just u)
                     Nothing -> simpleText "user doesn't exist anymore"
 
     post "/login" $ do
@@ -199,7 +183,7 @@ app =  do
         redirect "/"
 
     get "/reset" $ do
-        lucid $ resetPage LoggedOut
+        lucid $ resetPage
 
     post "/reset" $ do
         mEmail <- param "email"
@@ -314,9 +298,11 @@ validSignupRequest = do
     if null (catMaybes se)
         then return sr
         else do liftIO $ pPrint se
-                lucid (signupPage (Just $ catMaybes se) LoggedOut)
+                --lucid (signupPage (Just $ catMaybes se) LoggedOut)
+                lucid $ signupPage (Just $ catMaybes se)
+                return sr
 
-changePasswordRequest ::PidgeonAction (T.Text, T.Text, T.Text)
+changePasswordRequest :: PidgeonAction (T.Text, T.Text, T.Text)
 changePasswordRequest = do
   ps <- params
   let mReq = (,,) <$> lookup "currentpassword" ps
@@ -364,15 +350,14 @@ getIP4 ipport = let s = show ipport
 
 ---------------------- Lucid stuff -----------------------
 -- TODO: move out of Main.hs
-lucid :: Html a1 -> PidgeonAction a
-lucid = lazyBytes . renderBS
+--lucid :: Html a1 -> PidgeonAction a
+--lucid = lazyBytes . renderBS
+lucid :: Handler -> PidgeonAction a
+lucid h = renderBST h >>= lazyBytes
 
 simpleText :: T.Text -> PidgeonAction a
 simpleText x = do
-        r <- readSession
-        case r of
-            Nothing -> lucid (simplePage x LoggedOut)  -- TODO: Handle logged out case.
-            Just sess -> lucid (simplePage x LoggedIn)
+   lucid (simplePage x )  -- TODO: Handle logged out case.
 ---------------------- Persistent ------------------------
 -- TODO: move out of Main.hs
 runDB :: (HasSpock m, SpockConn m ~ SqlBackend) =>

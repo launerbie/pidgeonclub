@@ -13,6 +13,20 @@ module PidgeonClub.Types where
 import qualified Data.Text as T
 import Database.Persist.TH
 import Data.Time (UTCTime, getCurrentTime, addUTCTime)
+import Network.Socket
+import Database.Persist.Sql hiding (get)
+
+----------------- Spock -----------------------
+import Web.Spock ( get, post, HasSpock, lazyBytes, middleware
+                 , redirect, runSpock, spockAsApp, spock, SpockCtxM, SpockConn, ActionCtxT
+                 , SpockActionCtx, root, runQuery, text, var
+                 , (<//>) )
+
+import Web.Spock.Config  ( defaultSpockCfg, PoolOrConn (PCNoDatabase, PCPool)
+                         , SpockCfg )
+import Web.Spock.Action  ( request, params, param, param')
+import Web.Spock.SessionActions (getSessionId, readSession, writeSession)
+
 
 ----------------------- Database Schema ---------------------------------
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
@@ -50,3 +64,17 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
     personId PersonId
     deriving Show
 |]
+
+data PidgeonConfig = PidgeonConfig
+    { dbHost :: HostName
+    , dbPort :: Int
+    , dbName :: String
+    , dbUser :: String
+    , dbPass :: String
+    } deriving (Show)
+
+data AppState = AppState {getCfg :: PidgeonConfig}
+type AppSession = Maybe SessieId
+type PidgeonApp ctx a = SpockCtxM ctx SqlBackend AppSession AppState a
+type PidgeonAction = SpockActionCtx () SqlBackend AppSession AppState
+
