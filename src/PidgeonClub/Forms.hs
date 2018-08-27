@@ -2,10 +2,6 @@ module PidgeonClub.Forms where
 
 import qualified Data.Text as T
 
---TODO, validate with isValid :: Bytestring -> Bool
-import Text.Email.Validate (isValid)
-import Data.Text.Encoding (encodeUtf8)
-
 -------------------------------- Forms -------------------------------------
 data NewPidgeonFormError = InvalidSome
                          | InvalidThing

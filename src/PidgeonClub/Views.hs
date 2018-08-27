@@ -1,20 +1,57 @@
 {-# LANGUAGE OverloadedStrings #-}
 --ExtendedDefaultRules needed for script_?
 {-# LANGUAGE ExtendedDefaultRules #-}
+
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies        #-}
+
 module PidgeonClub.Views where
 
 import Control.Monad.Trans.Class
-import Control.Monad.Trans.Reader
-import Control.Monad.Trans.Maybe
 import Data.Monoid ((<>))
 import qualified Data.Text as T
 import Lucid
 import Lucid.Base (makeAttribute)
 
-import PidgeonClub.Forms
-import PidgeonClub.Types
-import PidgeonClub.Lorem
+-- ##############################################################
+import Control.Monad        (liftM, when, unless, guard)
+import Control.Monad.Trans  (lift, MonadIO, liftIO)
+import Control.Monad.Trans.Resource  (ResourceT, runResourceT)
+import Control.Monad.Trans.Maybe
+import Control.Monad.Trans.Reader
+import Control.Monad.Logger    (runNoLoggingT, runStderrLoggingT, NoLoggingT)
+import Data.Char (toLower)
+import Data.Word8
+import Data.Maybe
+import Data.Monoid ((<>))
+import qualified Data.ByteString as BS
+import qualified Crypto.Hash.SHA256 as SHA
+import qualified Data.ByteString.Base16 as B16
+import qualified Data.ByteString.Char8 as B
+import qualified Data.Configurator as C
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
+import Data.UnixTime (getUnixTime, toClockTime, utSeconds)
+import Data.Time (UTCTime, getCurrentTime, addUTCTime)
+import Lucid
+import Network.Socket
+import Network.Wai.Middleware.Static (staticPolicy, addBase)
+import Network.Wai
+import System.Random
+import Text.Pretty.Simple (pPrint)
 
+----------------- Persistence -----------------
+import qualified Database.Persist as P
+import Database.Persist.Postgresql ( ConnectionString, createPostgresqlPool
+                                   , SqlPersistT)
+import Database.Persist.Sql hiding (get)
+import qualified Database.Persist.Sql as PSQL
+import Database.Persist.TH
+
+import Network.Wai.Handler.WarpTLS
+import Network.Wai.Handler.Warp
+
+----------------- Spock -----------------------
 import Web.Spock ( get, post, HasSpock, lazyBytes, middleware
                  , redirect, runSpock, spockAsApp, spock, SpockCtxM, SpockConn, ActionCtxT
                  , SpockActionCtx, root, runQuery, text, var
@@ -25,6 +62,11 @@ import Web.Spock.Config  ( defaultSpockCfg, PoolOrConn (PCNoDatabase, PCPool)
 import Web.Spock.Action  ( request, params, param, param')
 import Web.Spock.SessionActions (getSessionId, readSession, writeSession)
 
+-- ##############################################################
+
+import PidgeonClub.Forms
+import PidgeonClub.Types
+import PidgeonClub.Lorem
 
 
 data LogStatus = LoggedOut | LoggedIn deriving (Eq,Show)
@@ -43,15 +85,34 @@ data NavEntry = NavEntry
 --type HtmlHandler input = ReaderT input PidgeonAction (Html ())
 type Handler = HtmlT PidgeonAction ()
 
-homeNav      = NavEntry "/" "Home"
-loginNav     = NavEntry "/login" "Login"
-logoutNav    = NavEntry "/logout" "Logout"
+homeNav ::  NavEntry
+homeNav = NavEntry "/" "Home"
+
+loginNav :: NavEntry
+loginNav = NavEntry "/login" "Login"
+
+logoutNav :: NavEntry
+logoutNav = NavEntry "/logout" "Logout"
+
+settingsNav :: NavEntry
 settingsNav  = NavEntry "/settings" "Settings"
-signupNav    = NavEntry "/signup" "Signup"
+
+signupNav :: NavEntry
+signupNav = NavEntry "/signup" "Signup"
+
+loginHistNav :: NavEntry
 loginHistNav = NavEntry "/loginhistory" "Login History"
-allUsersNav  = NavEntry "/allusers" "Users"
-pidgeonsNav  = NavEntry "/pidgeons" "Pidgeons"
-newPidgeonNav  = NavEntry "/newpidgeon" "Add a pidgeon"
+
+allUsersNav :: NavEntry
+allUsersNav = NavEntry "/allusers" "Users"
+
+pidgeonsNav :: NavEntry
+pidgeonsNav = NavEntry "/pidgeons" "Pidgeons"
+
+newPidgeonNav :: NavEntry
+newPidgeonNav = NavEntry "/newpidgeon" "Add a pidgeon"
+
+testNav :: NavEntry
 testNav      = NavEntry "/test" "Test page"
 
 data NavMenu = NavMenu [NavEntry] NavEntry deriving Show
@@ -84,10 +145,9 @@ basePage active content =
           footer2
           scripts2
 
---navigation :: NavMenu -> Html ()
 navigation :: NavEntry -> HtmlT PidgeonAction ()
 navigation active = do
-  (NavMenu xs active) <- lift $ getNavMenu active
+  (NavMenu xs _) <- lift $ getNavMenu active
   nav_ [class_ "navbar navbar-inverse"] $ do
      div_ [class_ "container-fluid"] $ do
         div_ [class_ "navbar-header"] $ do
@@ -172,8 +232,8 @@ signupSuccessPage email = do
          p_ $ toHtml $ "An activation mail has been sent to: " <> email
          p_ $ a_ [href_ "/"] "Click here to go back"
 
-settingsPage :: Person -> SettingsPage -> Handler
-settingsPage p settings = basePage settingsNav $ do
+settingsPage :: SettingsPage -> Handler
+settingsPage settings = basePage settingsNav $ do
   div_ [class_ "container-fluid"] $ do
      div_ [class_ "row"] $ do
         div_ [class_ "col-sm-2"] $ do
@@ -184,18 +244,20 @@ settingsPage p settings = basePage settingsNav $ do
               div_ [class_ "panel-body"] $ a_ [href_ "/settings/security"] "Security"
         div_ [class_ "col-sm-6"] $ do
            case settings of
-               SettingsProfile  -> settingsProfilePage p
-               SettingsAccount  -> settingsAccountPage p
-               SettingsSecurity -> settingsSecurityPage p
+               SettingsProfile  -> settingsProfilePage
+               SettingsAccount  -> settingsAccountPage
+               SettingsSecurity -> settingsSecurityPage
+               SettingsLoginHistory -> undefined
 
-settingsProfilePage :: Person -> Handler
-settingsProfilePage p = do
+settingsProfilePage :: Handler
+settingsProfilePage = do
+     p <- lift $ validPerson
      p_ $ toHtml $ personEmail p
      p_ $ toHtml $ personPassword p
      p_ $ toHtml $ personSalt p
 
-settingsAccountPage :: Person -> Handler
-settingsAccountPage p = do
+settingsAccountPage :: Handler
+settingsAccountPage = do
     h3_ "Change Password"
     hr_ []
     div_ [class_ "container"] $ do
@@ -212,8 +274,8 @@ settingsAccountPage p = do
            div_ [class_ "form-group"] $ do
               button_ [type_ "submit", class_ "btn btn-success"] "Change password"
 
-settingsSecurityPage :: Person -> Handler
-settingsSecurityPage p = undefined
+settingsSecurityPage :: Handler
+settingsSecurityPage = undefined
 
 loginHistoryPage :: [Login] -> Handler
 loginHistoryPage ls = basePage loginHistNav $ do
@@ -396,4 +458,214 @@ makeRow2 :: (T.Text, T.Text) -> Handler
 makeRow2 (a,b) = tr_ $ do
                   td_ (toHtml a)
                   td_ (toHtml b)
+
+
+loginUser :: PersonId -> PidgeonAction ()
+loginUser personId = do
+  ip       <- fmap (T.pack . getIP4 . remoteHost) request
+  utctime  <- liftIO getCurrentTime
+  validTil <- liftIO $ fmap (addUTCTime 3600) getCurrentTime
+  sid      <- runDB $ do deleteWhere [ SessiePersonId ==. personId ]
+                         insert (Login utctime ip personId)
+                         insert (Sessie validTil personId ip)
+                         --TODO: save unixtime
+  writeSession (Just sid)
+  redirect "/"
+
+requireUser :: (Key Person -> PidgeonAction a) -> PidgeonAction a
+requireUser action = do
+  mSessid <- readSession
+  case mSessid of
+    Just sess -> do
+      mPersonId <- getUserFromSession sess
+      case mPersonId of
+         Nothing -> simpleText "Sorry, no access!"
+         Just user -> action user
+    Nothing -> simpleText "Not logged in."
+
+getUserFromSession :: SessieId -> PidgeonAction (Maybe PersonId)
+getUserFromSession sid = do
+  mSid <- runDB $ PSQL.get sid -- :: Maybe Sessie
+  case mSid of
+      Just sess -> do
+          now <- liftIO getCurrentTime
+          if sessieValidUntil sess > now
+            then return $ Just (sessiePersonId sess)
+            else simpleText "Session has expired"
+      Nothing -> do
+          writeSession Nothing
+          simpleText "Invalid session"
+
+getPerson :: PersonId -> PidgeonAction Person
+getPerson u = do
+   mPerson <- runDB $ PSQL.get u
+   case mPerson of
+       Just p -> return p
+       Nothing -> simpleText "user doesn't exist anymore"
+
+validPerson :: PidgeonAction Person
+validPerson = do
+  mSessid <- readSession
+  case mSessid of
+    Nothing -> simpleText "Not logged in."
+    Just sess -> do
+      mPersonId <- getUserFromSession sess
+      case mPersonId of
+        Just pid -> getPerson pid
+        Nothing -> simpleText "Invalid session"
+
+killSessions :: PersonId -> PidgeonAction ()
+killSessions personId = runDB $ deleteWhere [ SessiePersonId ==. personId ]
+
+insertPerson :: Person -> PidgeonAction (Key Person)
+insertPerson p = runDB $ insert p
+
+getSignupRequest :: PidgeonAction SignupRequest
+getSignupRequest = do
+    ps <- params
+    let mSr = SignupRequest <$> lookup "email" ps
+                            <*> lookup "password" ps
+                            <*> lookup "passwordConfirm" ps
+    case mSr of
+      Just sr -> return sr
+      Nothing -> text "Oops, something went wrong with your request!"
+
+loginRequest :: PidgeonAction LoginRequest
+loginRequest = do
+    ps <- params
+    let mLR = LoginRequest <$> lookup "email" ps
+                           <*> lookup "password" ps
+    case mLR of
+      Just lr -> return lr
+      Nothing -> text "Oops, something went wrong with your request!"
+
+getPersonFromRequest :: LoginRequest -> PidgeonAction (Key Person, Person)
+getPersonFromRequest lr = do
+  mPersonEnt <- runDB $ getBy (UniqueUsername $ T.toLower (lrEmail lr))
+  case mPersonEnt of
+      Just ent -> do
+          liftIO $ pPrint ent
+          return (entityKey ent, entityVal ent)
+      Nothing -> simpleText "Invalid email or password"
+
+mkPerson :: SignupRequest -> PidgeonAction Person
+mkPerson sr = do
+  (salt, hash) <- mkNewSaltAndHash (srPassword sr)
+  return $ Person mail (makeHex hash) (makeHex salt) Nothing
+  where mail = T.toLower (srEmail sr)
+
+validSignupRequest :: PidgeonAction SignupRequest
+validSignupRequest = do
+    sr      <- getSignupRequest
+    mPerson <- runDB $ getBy (UniqueUsername $ T.toLower (srEmail sr))
+
+    let se = [ if isNothing mPerson
+                 then Nothing
+                 else Just EmailAddressTaken
+             , if isValidEmail (srEmail sr)
+                 then Nothing
+                 else Just InvalidEmailAddress
+             , if validPasswordLength (srPassword sr)
+                 then Nothing
+                 else Just PasswordTooShort
+             , if srPassword sr == srPasswordConfirm sr
+                 then Nothing
+                 else Just PasswordsDontMatch
+             ]
+
+    if null (catMaybes se)
+        then return sr
+        else do liftIO $ pPrint se
+                --lucid (signupPage (Just $ catMaybes se) LoggedOut)
+                lucid $ signupPage (Just $ catMaybes se)
+                return sr
+
+changePasswordRequest :: PidgeonAction (T.Text, T.Text, T.Text)
+changePasswordRequest = do
+  ps <- params
+  let mReq = (,,) <$> lookup "currentpassword" ps
+                  <*> lookup "newpassword" ps
+                  <*> lookup "newpasswordC" ps
+  case mReq of
+      Just r -> return r
+      Nothing -> text "Oops, something went wrong with your request!"
+
+checkPassword :: PersonId -> T.Text -> PidgeonAction ()
+checkPassword u p = do
+    person        <- getPerson u
+    let (salt, hash) = (personSalt person, personPassword person)
+    if hash == makeHex (hashPassword p (decodeHex salt))
+        then return ()
+        else simpleText "Incorrect current password"
+
+updatePassword :: PersonId -> T.Text -> T.Text -> PidgeonAction ()
+updatePassword u p1 p2 = do
+  (salt, hash) <- mkNewSaltAndHash p1
+  if p1 == p2
+      then runDB $ update u [ PersonPassword =. makeHex hash
+                            , PersonSalt =. makeHex salt]
+      else simpleText "Passwords don't match"
+
+mkNewSaltAndHash :: T.Text -> PidgeonAction (BS.ByteString, BS.ByteString)
+mkNewSaltAndHash password = do
+  g <- liftIO newStdGen
+  let salt = randomBS 16 g
+      hash = hashPassword password salt
+  return (salt, hash)
+
+showRequest :: PidgeonAction ()
+showRequest = do
+    r <- request
+    p <- params
+    liftIO $ do pPrint r
+                print p
+
+-- TODO: Move out of Main.hs
+getIP4 :: SockAddr -> String
+getIP4 ipport = let s = show ipport
+               in takeWhile (/= ':') s
+
+
+---------------------- Lucid stuff -----------------------
+-- TODO: move out of Main.hs
+--lucid :: Html a1 -> PidgeonAction a
+--lucid = lazyBytes . renderBS
+lucid :: Handler -> PidgeonAction a
+lucid h = renderBST h >>= lazyBytes
+
+simpleText :: T.Text -> PidgeonAction a
+simpleText x = lucid (simplePage x)
+---------------------- Persistent ------------------------
+-- TODO: move out of Main.hs
+runDB :: (HasSpock m, SpockConn m ~ SqlBackend) =>
+         SqlPersistM a -> m a
+runDB action = runQuery $ \conn ->
+    runResourceT $ runNoLoggingT $ runSqlConn action conn
+
+--------------- Hex / UnHex --------------------------
+-- TODO: move out of Main.hs
+makeHex :: BS.ByteString -> T.Text
+makeHex = T.decodeUtf8 . B16.encode
+{-# INLINE makeHex #-}
+
+decodeHex :: T.Text -> BS.ByteString
+decodeHex = fst . B16.decode . T.encodeUtf8
+{-# INLINE decodeHex #-}
+
+--------------------- Crypto -----------------------------
+-- TODO: move out of Main.hs
+randomBytes:: Int -> StdGen -> [Word8]
+randomBytes 0 _ = []
+randomBytes ct g =
+    let (value, nextG) = next g
+    in fromIntegral value:randomBytes (ct - 1) nextG
+
+randomBS :: Int -> StdGen -> BS.ByteString
+randomBS len g =
+    BS.pack $ randomBytes len g
+
+hashPassword :: T.Text -> BS.ByteString -> BS.ByteString
+hashPassword password salt =
+     SHA.finalize $ SHA.updates SHA.init [salt, T.encodeUtf8 password]
+
 

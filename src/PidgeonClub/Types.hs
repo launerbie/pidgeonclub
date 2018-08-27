@@ -12,21 +12,12 @@ module PidgeonClub.Types where
 
 import qualified Data.Text as T
 import Database.Persist.TH
-import Data.Time (UTCTime, getCurrentTime, addUTCTime)
+import Data.Time (UTCTime)
 import Network.Socket
 import Database.Persist.Sql
 
 ----------------- Spock -----------------------
-import Web.Spock ( get, post, HasSpock, lazyBytes, middleware
-                 , redirect, runSpock, spockAsApp, spock, SpockCtxM, SpockConn, ActionCtxT
-                 , SpockActionCtx, root, runQuery, text, var
-                 , (<//>) )
-
-import Web.Spock.Config  ( defaultSpockCfg, PoolOrConn (PCNoDatabase, PCPool)
-                         , SpockCfg )
-import Web.Spock.Action  ( request, params, param, param')
-import Web.Spock.SessionActions (getSessionId, readSession, writeSession)
-
+import Web.Spock
 
 ----------------------- Database Schema ---------------------------------
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
