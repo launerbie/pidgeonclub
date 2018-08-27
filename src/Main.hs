@@ -10,7 +10,7 @@ import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Reader
 import Control.Monad.Logger    (runNoLoggingT, runStderrLoggingT, NoLoggingT)
 import Data.Char (toLower)
-import Data.Word8 hiding (toLower)
+import Data.Word8
 import Data.Maybe
 import Data.Monoid ((<>))
 import qualified Data.ByteString as BS
@@ -62,12 +62,12 @@ main = do
   sitecfg <- parseConfig "siteconfig.cfg" --TODO: default to 'siteconfig.cfg',
   pool <- dbpool sitecfg
   -- defaultSpockCfg :: sess -> PoolOrConn conn -> st -> IO (SpockCfg conn sess st)
-  cfg <- defaultSpockCfg (Nothing) pool (AppState sitecfg)
+  cfg <- defaultSpockCfg Nothing pool (AppState sitecfg)
   -- TODO: get port from cmd argument
   --runSpock 8080 (spock cfg app)
   application <- spockAsApp $ spock cfg app
-  let tls = (tlsSettings "certificate.pem" "key.pem")
-  let settings = (setPort 443 defaultSettings)
+  let tls = tlsSettings "certificate.pem" "key.pem"
+  let settings = setPort 443 defaultSettings
   runTLS tls settings application
 
 dbpool :: PidgeonConfig -> IO (PoolOrConn SqlBackend)
@@ -87,10 +87,10 @@ parseConfig f = do
     return (PidgeonConfig host port dbname user passwd)
 
 getConnString :: PidgeonConfig -> ConnectionString
-getConnString p = B.pack $ concat [ "host=", (dbHost p)
-                                  , " dbname=", (dbName p)
-                                  , " user=", (dbUser p)
-                                  , " password=", (dbPass p)
+getConnString p = B.pack $ concat [ "host=", dbHost p
+                                  , " dbname=", dbName p
+                                  , " user=", dbUser p
+                                  , " password=", dbPass p
                                   , " port=", show (dbPort p)
                                   ]
 
@@ -98,7 +98,7 @@ app :: PidgeonApp () ()
 app =  do
     middleware (staticPolicy (addBase "static"))
 
-    get "/test" $ do lucid testPage
+    get "/test" $ lucid testPage
 
     --get "/testrequirelogin" $ requireUser $ \_ -> do
     --    (runReaderT $ testPage) "x" >>= renderPage
@@ -127,13 +127,13 @@ app =  do
          lucid (addNewPidgeonPage Nothing)
          lucid (addNewPidgeonPage Nothing)
 
-    post "/newpidgeon" $ requireUser $ \u -> do undefined
+    post "/newpidgeon" $ requireUser $ \u -> undefined
 
-    get "/pidgeons" $ requireUser $ \u -> do
+    get "/pidgeons" $ requireUser $ \u ->
         simpleText "List all pidgeons here."
 
     -- The user's settings page
-    get "/settings" $ requireUser $ \u -> do
+    get "/settings" $ requireUser $ \u ->
         redirect "/settings/profile"
 
     get "/settings/profile" $ requireUser $ \u -> do
@@ -173,31 +173,29 @@ app =  do
         lr                 <- loginRequest
         (personId, person) <- getPersonFromRequest lr
         let (salt, hash) = (personSalt person, personPassword person)
-        if hash == (makeHex $ hashPassword (lrPassword lr) (decodeHex $ salt))
+        if hash == makeHex (hashPassword (lrPassword lr) (decodeHex salt))
             then loginUser personId
-            else simpleText ("Invalid email or password")
+            else simpleText "Invalid email or password"
 
     get "/logout" $ requireUser $ \u -> do
         killSessions u
         writeSession Nothing
         redirect "/"
 
-    get "/reset" $ do
-        lucid $ resetPage
+    get "/reset" $ lucid resetPage
 
     post "/reset" $ do
         mEmail <- param "email"
         case mEmail of
-            Just e -> do
-              simpleText ("A password reset mail has been sent to: " <> e)
+            Just e -> simpleText ("A password reset mail has been sent to: " <> e)
               --TODO: actually send password reset mail
-            Nothing -> text ("Oops, something went wrong with your request!")
+            Nothing -> text "Oops, something went wrong with your request!"
 
 loginUser :: PersonId -> PidgeonAction ()
 loginUser personId = do
   ip       <- fmap (T.pack . getIP4 . remoteHost) request
-  utctime  <- liftIO $ getCurrentTime
-  validTil <- liftIO $ liftM (addUTCTime 3600) getCurrentTime
+  utctime  <- liftIO getCurrentTime
+  validTil <- liftIO $ fmap (addUTCTime 3600) getCurrentTime
   sid      <- runDB $ do deleteWhere [ SessiePersonId ==. personId ]
                          insert (Login utctime ip personId)
                          insert (Sessie validTil personId ip)
@@ -224,10 +222,10 @@ getUserFromSession sid = do
           now <- liftIO getCurrentTime
           if sessieValidUntil sess > now
             then return $ Just (sessiePersonId sess)
-            else simpleText ("Session has expired")
+            else simpleText "Session has expired"
       Nothing -> do
           writeSession Nothing
-          simpleText ("Invalid session")
+          simpleText "Invalid session"
 
 getPerson :: PersonId -> PidgeonAction Person
 getPerson u = do
@@ -250,7 +248,7 @@ getSignupRequest = do
                             <*> lookup "passwordConfirm" ps
     case mSr of
       Just sr -> return sr
-      Nothing -> text ("Oops, something went wrong with your request!")
+      Nothing -> text "Oops, something went wrong with your request!"
 
 loginRequest :: PidgeonAction LoginRequest
 loginRequest = do
@@ -259,16 +257,16 @@ loginRequest = do
                            <*> lookup "password" ps
     case mLR of
       Just lr -> return lr
-      Nothing -> text ("Oops, something went wrong with your request!")
+      Nothing -> text "Oops, something went wrong with your request!"
 
-getPersonFromRequest :: LoginRequest -> PidgeonAction ((Key Person, Person))
+getPersonFromRequest :: LoginRequest -> PidgeonAction (Key Person, Person)
 getPersonFromRequest lr = do
   mPersonEnt <- runDB $ getBy (UniqueUsername $ T.toLower (lrEmail lr))
   case mPersonEnt of
       Just ent -> do
           liftIO $ pPrint ent
           return (entityKey ent, entityVal ent)
-      Nothing -> simpleText ("Invalid email or password")
+      Nothing -> simpleText "Invalid email or password"
 
 mkPerson :: SignupRequest -> PidgeonAction Person
 mkPerson sr = do
@@ -290,7 +288,7 @@ validSignupRequest = do
              , if validPasswordLength (srPassword sr)
                  then Nothing
                  else Just PasswordTooShort
-             , if (srPassword sr) == (srPasswordConfirm sr)
+             , if srPassword sr == srPasswordConfirm sr
                  then Nothing
                  else Just PasswordsDontMatch
              ]
@@ -310,27 +308,27 @@ changePasswordRequest = do
                   <*> lookup "newpasswordC" ps
   case mReq of
       Just r -> return r
-      Nothing -> text ("Oops, something went wrong with your request!")
+      Nothing -> text "Oops, something went wrong with your request!"
 
 checkPassword :: PersonId -> T.Text -> PidgeonAction ()
 checkPassword u p = do
     person        <- getPerson u
     let (salt, hash) = (personSalt person, personPassword person)
-    if hash == (makeHex $ hashPassword p (decodeHex $ salt))
+    if hash == makeHex (hashPassword p (decodeHex salt))
         then return ()
-        else simpleText ("Incorrect current password")
+        else simpleText "Incorrect current password"
 
 updatePassword :: PersonId -> T.Text -> T.Text -> PidgeonAction ()
 updatePassword u p1 p2 = do
   (salt, hash) <- mkNewSaltAndHash p1
   if p1 == p2
-      then runDB $ update u [ PersonPassword =. (makeHex hash)
-                            , PersonSalt =. (makeHex salt)]
+      then runDB $ update u [ PersonPassword =. makeHex hash
+                            , PersonSalt =. makeHex salt]
       else simpleText "Passwords don't match"
 
 mkNewSaltAndHash :: T.Text -> PidgeonAction (BS.ByteString, BS.ByteString)
 mkNewSaltAndHash password = do
-  g <- liftIO $ newStdGen
+  g <- liftIO newStdGen
   let salt = randomBS 16 g
       hash = hashPassword password salt
   return (salt, hash)
@@ -356,8 +354,7 @@ lucid :: Handler -> PidgeonAction a
 lucid h = renderBST h >>= lazyBytes
 
 simpleText :: T.Text -> PidgeonAction a
-simpleText x = do
-   lucid (simplePage x )  -- TODO: Handle logged out case.
+simpleText x = lucid (simplePage x)
 ---------------------- Persistent ------------------------
 -- TODO: move out of Main.hs
 runDB :: (HasSpock m, SpockConn m ~ SqlBackend) =>
@@ -389,4 +386,4 @@ randomBS len g =
 
 hashPassword :: T.Text -> BS.ByteString -> BS.ByteString
 hashPassword password salt =
-     SHA.finalize $ SHA.updates SHA.init [salt, T.encodeUtf8 $ password]
+     SHA.finalize $ SHA.updates SHA.init [salt, T.encodeUtf8 password]

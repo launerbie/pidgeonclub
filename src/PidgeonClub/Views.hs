@@ -56,7 +56,7 @@ testNav      = NavEntry "/test" "Test page"
 
 data NavMenu = NavMenu [NavEntry] NavEntry deriving Show
 
-getNavMenu :: NavEntry -> PidgeonAction (NavMenu)
+getNavMenu :: NavEntry -> PidgeonAction NavMenu
 getNavMenu active = do
   s      <- logState
   if s == LoggedIn
@@ -75,7 +75,7 @@ basePage :: NavEntry -> Handler -> HtmlT PidgeonAction ()
 basePage active content =
   html_ [lang_ "en"] $ do
       head_ $ do
-          title_ (toHtml $ (navText active) <> " | Pidgeon Club")
+          title_ (toHtml $ navText active <> " | Pidgeon Club")
           meta_ [name_ "viewport", content_ "width=device-width, initial-scale=1"]
           link_ [rel_ "stylesheet",type_ "text/css",href_ "/css/bootstrap.min.css"]
       body_ $ do
@@ -99,7 +99,7 @@ navigation active = do
            a_ [class_ "navbar-brand"] "Pidgeon Club"
         div_ [class_ "collapse navbar-collapse", id_ "navbar"] $ do
            ul_ [class_ "nav navbar-nav"] $ do
-             mapM_ (\x -> createNavEntry x active) xs
+             mapM_ (`createNavEntry` active) xs
              where createNavEntry :: NavEntry -> NavEntry -> HtmlT PidgeonAction ()
                    createNavEntry e a =
                      if e == a
@@ -117,27 +117,27 @@ testPage :: Handler
 testPage = do
     basePage testNav $ do
       div_ [class_ "container"] $ do
-          (p_ $ toHtml "test")
+          p_ $ toHtml "test"
 
 --  ################## Pages #####################################
 homePage :: Handler
 homePage = do
     basePage homeNav $ do
       div_ [class_ "container"] $ do
-          (h1_ "Lorem Ipsum")
-          (p_ $ toHtml lorem1)
+          h1_ "Lorem Ipsum"
+          p_ $ toHtml lorem1
 
-          (h1_ "Paketus Directus")
-          (p_ $ toHtml lorem2)
+          h1_ "Paketus Directus"
+          p_ $ toHtml lorem2
 
-          (h1_ "Facilus maximus")
-          (p_ $ toHtml lorem3)
+          h1_ "Facilus maximus"
+          p_ $ toHtml lorem3
 
-          (h1_ "Minem fringilla")
-          (p_ $ toHtml lorem4)
+          h1_ "Minem fringilla"
+          p_ $ toHtml lorem4
 
-          (h1_ "Pidgem Pidgus")
-          (p_ $ toHtml lorem5)
+          h1_ "Pidgem Pidgus"
+          p_ $ toHtml lorem5
 
 simplePage :: T.Text -> Handler
 simplePage x = basePage homeNav $ do
@@ -150,30 +150,30 @@ alreadyLoggedInPage p = do
      div_ [class_ "panel panel-default"] $ do
         div_ [class_ "panel-heading"] "Log in to the Pidgeon Club"
         div_ [class_ "panel-body"] $ do
-           (p_ $ toHtml $ "Already logged in as: " <> personEmail p)
-           (p_ $ toHtml $ "Would you like to log out?")
+           p_ $ toHtml $ "Already logged in as: " <> personEmail p
+           p_ $ toHtml "Would you like to log out?"
            a_ [class_ "btn btn-success", href_ "/logout", role_ "button"] "Log out"
 
 loginPage :: Maybe Person -> Handler
-loginPage (Just p) = basePage (loginNav) (alreadyLoggedInPage p)
-loginPage Nothing = basePage (loginNav) loginForm
+loginPage (Just p) = basePage loginNav (alreadyLoggedInPage p)
+loginPage Nothing = basePage loginNav loginForm
 
 resetPage :: Handler
-resetPage = basePage (homeNav) resetPassForm
+resetPage = basePage homeNav resetPassForm
 
-signupPage :: (Maybe [SignupFormError]) -> Handler
+signupPage :: Maybe [SignupFormError] -> Handler
 signupPage mErr = do
-  basePage (signupNav) (signupForm mErr)
+  basePage signupNav (signupForm mErr)
 
 signupSuccessPage :: T.Text -> Handler
 signupSuccessPage email = do
-    basePage (signupNav) $ do
+    basePage signupNav $ do
       div_ [class_ "container"] $ do
          p_ $ toHtml $ "An activation mail has been sent to: " <> email
          p_ $ a_ [href_ "/"] "Click here to go back"
 
 settingsPage :: Person -> SettingsPage -> Handler
-settingsPage p settings = basePage (settingsNav) $ do
+settingsPage p settings = basePage settingsNav $ do
   div_ [class_ "container-fluid"] $ do
      div_ [class_ "row"] $ do
         div_ [class_ "col-sm-2"] $ do
@@ -216,8 +216,8 @@ settingsSecurityPage :: Person -> Handler
 settingsSecurityPage p = undefined
 
 loginHistoryPage :: [Login] -> Handler
-loginHistoryPage ls = basePage (loginHistNav) $ do
-  let loginToRow = \l -> (T.pack . show $ loginTime l, loginIpaddress l)
+loginHistoryPage ls = basePage loginHistNav $ do
+  let loginToRow l = (T.pack . show $ loginTime l, loginIpaddress l)
   div_ [class_ "container"] $ do
      table_ [class_ "table table-bordered"] $ do
           tr_ $ do
@@ -226,13 +226,13 @@ loginHistoryPage ls = basePage (loginHistNav) $ do
           mapM_ (makeRow2 . loginToRow) ls
 
 userPage :: String -> Handler
-userPage email = basePage (homeNav) $ do
+userPage email = basePage homeNav $ do
   div_ [class_ "container"] $ do
      p_ $ toHtml email
 
 allUsersPage :: [Person] -> Handler
-allUsersPage xs = basePage (allUsersNav) $ do
-  let personToRow = \p -> (personEmail p, personPassword p, personSalt p)
+allUsersPage xs = basePage allUsersNav $ do
+  let personToRow p = (personEmail p, personPassword p, personSalt p)
   div_ [class_ "container"] $ do
      table_ [class_ "table table-bordered"] $ do
           tr_ $ do
@@ -342,7 +342,7 @@ resetPassForm = do
                      button_ [type_ "submit", class_ "btn btn-success"] "Send password reset mail"
 
 addNewPidgeonPage :: Maybe [NewPidgeonFormError] -> Handler
-addNewPidgeonPage mErr = basePage (newPidgeonNav) (addNewPidgeonForm mErr)
+addNewPidgeonPage mErr = basePage newPidgeonNav (addNewPidgeonForm mErr)
 
 footer :: Html ()
 footer = do

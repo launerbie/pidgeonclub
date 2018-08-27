@@ -14,7 +14,7 @@ import qualified Data.Text as T
 import Database.Persist.TH
 import Data.Time (UTCTime, getCurrentTime, addUTCTime)
 import Network.Socket
-import Database.Persist.Sql hiding (get)
+import Database.Persist.Sql
 
 ----------------- Spock -----------------------
 import Web.Spock ( get, post, HasSpock, lazyBytes, middleware
@@ -73,7 +73,7 @@ data PidgeonConfig = PidgeonConfig
     , dbPass :: String
     } deriving (Show)
 
-data AppState = AppState {getCfg :: PidgeonConfig}
+newtype AppState = AppState {getCfg :: PidgeonConfig}
 type AppSession = Maybe SessieId
 type PidgeonApp ctx a = SpockCtxM ctx SqlBackend AppSession AppState a
 type PidgeonAction = SpockActionCtx () SqlBackend AppSession AppState
