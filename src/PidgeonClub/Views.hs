@@ -383,8 +383,7 @@ addNewPidgeonForm mErr = do
                div_ [class_ "form-group"] $ do
                   label_ [for_ "", class_ "col-sm-2 control-label"] "Photo: "
                   div_ [class_ "col-sm-4"] $ do
-                     input_ [type_ "file", class_ "form-control-file", name_ "photo"
-                            ]
+                     input_ [type_ "file", class_ "form-control-file", name_ "photo" ]
                div_ [class_ "form-group"] $ do
                   div_ [class_ "col-sm-offset-2 col-sm-4"] $ do
                      button_ [type_ "submit", class_ "btn btn-success"] "Register pidgeon"
@@ -623,7 +622,6 @@ showRequest :: PidgeonAction ()
 showRequest = do
     r <- request
     p <- params
-
     liftIO $ do pPrint r
                 print p
 

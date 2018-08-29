@@ -43,12 +43,14 @@ main = do
   -- defaultSpockCfg :: sess -> PoolOrConn conn -> st -> IO (SpockCfg conn sess st)
   cfg <- defaultSpockCfg Nothing pool (AppState sitecfg)
   -- TODO: get port from cmd argument
-  --runSpock 8080 (spock cfg app)
   application <- spockAsApp $ spock cfg app
-  let tls = tlsSettings "certificate.pem" "key.pem"
-  let settings = setPort 443 defaultSettings
-  --runSpock 8080 (spock cfg app)
-  runTLS tls settings application
+  runSpock 8080 (spock cfg app)
+   
+  --let certpath = "certs/live/homesecurity.fun/fullchain.pem"
+  --let keypath = "certs/live/homesecurity.fun/privkey.pem"
+  --let tls = tlsSettings certpath keypath
+  --let settings = setPort 443 defaultSettings
+  --runTLS tls settings application
 
 dbpool :: PidgeonConfig -> IO (PoolOrConn SqlBackend)
 dbpool pcfg = do
@@ -111,6 +113,7 @@ app =  do
          showRequest
          h <- files
          liftIO $ pPrint h
+         simpleText "Pidgeon has been submitted."
 
     get "/pidgeons" $ requireUser $ \u ->
         simpleText "List all pidgeons here."
