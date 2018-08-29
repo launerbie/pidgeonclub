@@ -362,7 +362,8 @@ addNewPidgeonForm mErr = do
      div_ [class_ "panel panel-default"] $ do
         div_ [class_ "panel-heading"] "Add new Pidgeon!"
         div_ [class_ "panel-body"] $ do
-           form_ [class_ "form-horizontal", method_ "post", action_ "/newpidgeon"] $ do
+           form_ [ class_ "form-horizontal", method_ "post", action_ "/newpidgeon"
+                 , enctype_ "multipart/form-data"] $ do
                div_ [class_ "form-group"] $ do
                   label_ [for_ "name", class_ "col-sm-2 control-label"] "Name: "
                   div_ [class_ "col-sm-4"] $ do
@@ -379,6 +380,11 @@ addNewPidgeonForm mErr = do
                   label_ [for_ "", class_ "col-sm-2 control-label"] "Weight: "
                   div_ [class_ "col-sm-4"] $ do
                      input_ [type_ "text", class_ "form-control", name_ "weight"]
+               div_ [class_ "form-group"] $ do
+                  label_ [for_ "", class_ "col-sm-2 control-label"] "Photo: "
+                  div_ [class_ "col-sm-4"] $ do
+                     input_ [type_ "file", class_ "form-control-file", name_ "photo"
+                            ]
                div_ [class_ "form-group"] $ do
                   div_ [class_ "col-sm-offset-2 col-sm-4"] $ do
                      button_ [type_ "submit", class_ "btn btn-success"] "Register pidgeon"
@@ -617,6 +623,7 @@ showRequest :: PidgeonAction ()
 showRequest = do
     r <- request
     p <- params
+
     liftIO $ do pPrint r
                 print p
 

@@ -8,6 +8,11 @@ import Data.Monoid ((<>))
 import qualified Data.ByteString.Char8 as B
 import qualified Data.Configurator as C
 
+import Text.Pretty.Simple (pPrint)
+import Data.HashMap.Strict (toList)
+import Control.Monad.Trans
+
+
 ----------------- Persistence -----------------
 import Database.Persist.Postgresql ( ConnectionString, createPostgresqlPool)
 import Database.Persist.Sql hiding (get)
@@ -19,11 +24,8 @@ import Network.Wai.Handler.Warp
 import Network.Wai.Middleware.Static (staticPolicy, addBase)
 
 ----------------- Spock -----------------------
-import Web.Spock ( get, post, HasSpock, lazyBytes, middleware
-                 , redirect, runSpock, spockAsApp, spock, SpockCtxM, SpockConn, ActionCtxT
-                 , SpockActionCtx, root, runQuery, text, var
-                 , (<//>) )
-
+import Web.Spock
+import Web.Spock.Action
 import Web.Spock.Config  ( defaultSpockCfg, PoolOrConn (PCNoDatabase, PCPool)
                          , SpockCfg )
 import Web.Spock.Action  ( request, params, param, param')
@@ -45,6 +47,7 @@ main = do
   application <- spockAsApp $ spock cfg app
   let tls = tlsSettings "certificate.pem" "key.pem"
   let settings = setPort 443 defaultSettings
+  --runSpock 8080 (spock cfg app)
   runTLS tls settings application
 
 dbpool :: PidgeonConfig -> IO (PoolOrConn SqlBackend)
@@ -104,7 +107,10 @@ app =  do
          lucid (addNewPidgeonPage Nothing)
          lucid (addNewPidgeonPage Nothing)
 
-    post "/newpidgeon" $ requireUser $ \u -> undefined
+    post "/newpidgeon" $ do
+         showRequest
+         h <- files
+         liftIO $ pPrint h
 
     get "/pidgeons" $ requireUser $ \u ->
         simpleText "List all pidgeons here."

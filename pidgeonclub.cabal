@@ -44,6 +44,7 @@ executable pidgeonclub
                      , text
                      , time
                      , unix-time
+                     , unordered-containers
                      , wai
                      , wai-middleware-static
                      , warp
