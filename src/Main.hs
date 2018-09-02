@@ -11,6 +11,7 @@ import qualified Data.Configurator as C
 import Text.Pretty.Simple (pPrint)
 import Data.HashMap.Strict (toList)
 import Control.Monad.Trans
+import System.Directory
 
 
 ----------------- Persistence -----------------
@@ -24,7 +25,7 @@ import Network.Wai.Handler.Warp
 import Network.Wai.Middleware.Static (staticPolicy, addBase)
 
 ----------------- Spock -----------------------
-import Web.Spock
+import Web.Spock hiding (head)
 import Web.Spock.Action
 import Web.Spock.Config  ( defaultSpockCfg, PoolOrConn (PCNoDatabase, PCPool)
                          , SpockCfg )
@@ -45,7 +46,7 @@ main = do
   -- TODO: get port from cmd argument
   application <- spockAsApp $ spock cfg app
   runSpock 8080 (spock cfg app)
-   
+
   --let certpath = "certs/live/homesecurity.fun/fullchain.pem"
   --let keypath = "certs/live/homesecurity.fun/privkey.pem"
   --let tls = tlsSettings certpath keypath
@@ -113,6 +114,9 @@ app =  do
          showRequest
          h <- files
          liftIO $ pPrint h
+         liftIO $ do
+           let (t, uf) = head (toList h)
+           copyFile (uf_tempLocation uf) "/tmp/test"
          simpleText "Pidgeon has been submitted."
 
     get "/pidgeons" $ requireUser $ \u ->
