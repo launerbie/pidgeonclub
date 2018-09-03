@@ -81,10 +81,8 @@ app :: PidgeonApp () ()
 app =  do
     middleware (staticPolicy (addBase "static"))
 
+    -- ###################   Public endpoints   #########################
     get "/test" $ lucid testPage
-
-    --get "/testrequirelogin" $ requireUser $ \_ -> do
-    --    (runReaderT $ testPage) "x" >>= renderPage
 
     get "/" $ lucid homePage
 
@@ -96,21 +94,47 @@ app =  do
         _  <- insertPerson p
         lucid $ signupSuccessPage (srEmail sr)
 
-    -- TODO: Make accessible only for admins
+    get "/login" $ do
+        r <- readSession
+        case r of
+            Nothing -> lucid $ loginPage Nothing
+            Just sess -> requireUser $ \u -> do -- sess unused
+                mPerson <- runDB $ PSQL.get u
+                case mPerson of
+                    Just p -> lucid $ loginPage (Just p)
+                    Nothing -> simpleText "user doesn't exist anymore"
+
+    post "/login" $ do
+        lr                 <- loginRequest
+        (personId, person) <- getPersonFromRequest lr
+        let (salt, hash) = (personSalt person, personPassword person)
+        if hash == makeHex (hashPassword (lrPassword lr) (decodeHex salt))
+            then loginUser personId
+            else simpleText "Invalid email or password"
+
+    get "/reset" $ lucid resetPage
+
+    post "/reset" $ do
+        mEmail <- param "email"
+        case mEmail of
+            Just e -> simpleText ("A password reset mail has been sent to: " <> e)
+              --TODO: actually send password reset mail
+            Nothing -> text "Oops, something went wrong with your request!"
+
+
+    -- ###################   Private endpoints  #########################
+
     get "/allusers" $ requireUser $ \_ -> do
+    -- TODO: Make accessible only for admins
         users <- runDB $ selectList [] [Asc PersonEmail] -- [Entity record]
         let persons = map entityVal users
         lucid $ allUsersPage persons
-
-    -- The user's public page
-    -- Display some publicly available information on the user on this page
-    get ("/user" <//> var) $ \user -> lucid $ userPage user
 
     get "/newpidgeon" $ requireUser $ \u -> do
          lucid (addNewPidgeonPage Nothing)
          lucid (addNewPidgeonPage Nothing)
 
-    post "/newpidgeon" $ do
+    post "/newpidgeon" $ requireUser $ \u -> do
          showRequest
          h <- files
          liftIO $ pPrint h
@@ -145,34 +169,14 @@ app =  do
         logins <- runDB $ selectList [LoginPersonId ==. u] []
         lucid $ loginHistoryPage (map entityVal logins)
 
-    get "/login" $ do
-        r <- readSession
-        case r of
-            Nothing -> lucid $ loginPage Nothing
-            Just sess -> requireUser $ \u -> do -- sess unused
-                mPerson <- runDB $ PSQL.get u
-                case mPerson of
-                    Just p -> lucid $ loginPage (Just p)
-                    Nothing -> simpleText "user doesn't exist anymore"
-
-    post "/login" $ do
-        lr                 <- loginRequest
-        (personId, person) <- getPersonFromRequest lr
-        let (salt, hash) = (personSalt person, personPassword person)
-        if hash == makeHex (hashPassword (lrPassword lr) (decodeHex salt))
-            then loginUser personId
-            else simpleText "Invalid email or password"
-
     get "/logout" $ requireUser $ \u -> do
         killSessions u
         writeSession Nothing
         redirect "/"
 
-    get "/reset" $ lucid resetPage
+    --get "/testrequirelogin" $ requireUser $ \_ -> do
+    --    (runReaderT $ testPage) "x" >>= renderPage
 
-    post "/reset" $ do
-        mEmail <- param "email"
-        case mEmail of
-            Just e -> simpleText ("A password reset mail has been sent to: " <> e)
-              --TODO: actually send password reset mail
-            Nothing -> text "Oops, something went wrong with your request!"
+    -- The user's public page
+    -- Display some publicly available information on the user on this page
+    --get ("/user" <//> var) $ \user -> lucid $ userPage user

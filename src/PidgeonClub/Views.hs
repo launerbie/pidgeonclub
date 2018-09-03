@@ -464,18 +464,7 @@ makeRow2 (a,b) = tr_ $ do
                   td_ (toHtml a)
                   td_ (toHtml b)
 
-
-loginUser :: PersonId -> PidgeonAction ()
-loginUser personId = do
-  ip       <- fmap (T.pack . getIP4 . remoteHost) request
-  utctime  <- liftIO getCurrentTime
-  validTil <- liftIO $ fmap (addUTCTime 3600) getCurrentTime
-  sid      <- runDB $ do deleteWhere [ SessiePersonId ==. personId ]
-                         insert (Login utctime ip personId)
-                         insert (Sessie validTil personId ip)
-                         --TODO: save unixtime
-  writeSession (Just sid)
-  redirect "/"
+-- ##################### Session Management  ##################################
 
 requireUser :: (Key Person -> PidgeonAction a) -> PidgeonAction a
 requireUser action = do
@@ -522,9 +511,7 @@ validPerson = do
 killSessions :: PersonId -> PidgeonAction ()
 killSessions personId = runDB $ deleteWhere [ SessiePersonId ==. personId ]
 
-insertPerson :: Person -> PidgeonAction (Key Person)
-insertPerson p = runDB $ insert p
-
+-- ######################### Signup #####################################
 getSignupRequest :: PidgeonAction SignupRequest
 getSignupRequest = do
     ps <- params
@@ -535,23 +522,8 @@ getSignupRequest = do
       Just sr -> return sr
       Nothing -> text "Oops, something went wrong with your request!"
 
-loginRequest :: PidgeonAction LoginRequest
-loginRequest = do
-    ps <- params
-    let mLR = LoginRequest <$> lookup "email" ps
-                           <*> lookup "password" ps
-    case mLR of
-      Just lr -> return lr
-      Nothing -> text "Oops, something went wrong with your request!"
-
-getPersonFromRequest :: LoginRequest -> PidgeonAction (Key Person, Person)
-getPersonFromRequest lr = do
-  mPersonEnt <- runDB $ getBy (UniqueUsername $ T.toLower (lrEmail lr))
-  case mPersonEnt of
-      Just ent -> do
-          liftIO $ pPrint ent
-          return (entityKey ent, entityVal ent)
-      Nothing -> simpleText "Invalid email or password"
+insertPerson :: Person -> PidgeonAction (Key Person)
+insertPerson p = runDB $ insert p
 
 mkPerson :: SignupRequest -> PidgeonAction Person
 mkPerson sr = do
@@ -585,6 +557,39 @@ validSignupRequest = do
                 lucid $ signupPage (Just $ catMaybes se)
                 return sr
 
+-- ######################### Login #####################################
+loginRequest :: PidgeonAction LoginRequest
+loginRequest = do
+    ps <- params
+    let mLR = LoginRequest <$> lookup "email" ps
+                           <*> lookup "password" ps
+    case mLR of
+      Just lr -> return lr
+      Nothing -> text "Oops, something went wrong with your request!"
+
+loginUser :: PersonId -> PidgeonAction ()
+loginUser personId = do
+  ip       <- fmap (T.pack . getIP4 . remoteHost) request
+  utctime  <- liftIO getCurrentTime
+  validTil <- liftIO $ fmap (addUTCTime 3600) getCurrentTime
+  sid      <- runDB $ do deleteWhere [ SessiePersonId ==. personId ]
+                         insert (Login utctime ip personId)
+                         insert (Sessie validTil personId ip)
+                         --TODO: save unixtime
+  writeSession (Just sid)
+  redirect "/"
+
+getPersonFromRequest :: LoginRequest -> PidgeonAction (Key Person, Person)
+getPersonFromRequest lr = do
+  mPersonEnt <- runDB $ getBy (UniqueUsername $ T.toLower (lrEmail lr))
+  case mPersonEnt of
+      Just ent -> do
+          liftIO $ pPrint ent
+          return (entityKey ent, entityVal ent)
+      Nothing -> simpleText "Invalid email or password"
+
+-- ###################### Passwords  ##################################
+
 changePasswordRequest :: PidgeonAction (T.Text, T.Text, T.Text)
 changePasswordRequest = do
   ps <- params
@@ -611,12 +616,12 @@ updatePassword u p1 p2 = do
                             , PersonSalt =. makeHex salt]
       else simpleText "Passwords don't match"
 
-mkNewSaltAndHash :: T.Text -> PidgeonAction (BS.ByteString, BS.ByteString)
-mkNewSaltAndHash password = do
-  g <- liftIO newStdGen
-  let salt = randomBS 16 g
-      hash = hashPassword password salt
-  return (salt, hash)
+
+-- ##################### Pidgeon Management ########################
+
+
+
+-- ######################## Convencience ######################
 
 showRequest :: PidgeonAction ()
 showRequest = do
@@ -629,7 +634,6 @@ showRequest = do
 getIP4 :: SockAddr -> String
 getIP4 ipport = let s = show ipport
                in takeWhile (/= ':') s
-
 
 ---------------------- Lucid stuff -----------------------
 -- TODO: move out of Main.hs
@@ -673,4 +677,10 @@ hashPassword :: T.Text -> BS.ByteString -> BS.ByteString
 hashPassword password salt =
      SHA.finalize $ SHA.updates SHA.init [salt, T.encodeUtf8 password]
 
+mkNewSaltAndHash :: T.Text -> PidgeonAction (BS.ByteString, BS.ByteString)
+mkNewSaltAndHash password = do
+  g <- liftIO newStdGen
+  let salt = randomBS 16 g
+      hash = hashPassword password salt
+  return (salt, hash)
 

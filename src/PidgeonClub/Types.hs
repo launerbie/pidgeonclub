@@ -54,6 +54,19 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
     ipaddress T.Text
     personId PersonId
     deriving Show
+  Pidgeon
+    name T.Text
+    height Double
+    weight Double
+    color T.Text
+    addedby PersonId
+    deriving Show
+  Imagepidgeon
+    filehash T.Text
+    filepath T.Text
+    rank Int
+    pidgeon PidgeonId
+    deriving Show
 |]
 
 data PidgeonConfig = PidgeonConfig
